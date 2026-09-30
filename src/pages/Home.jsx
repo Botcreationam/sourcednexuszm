@@ -6,6 +6,7 @@ import { buildWhatsAppUrl, photoSourcingMessage, WHATSAPP_DISPLAY } from "@/lib/
 import ScrollReveal from "@/components/site/ScrollReveal";
 import HorizontalProductSection from "@/components/site/HorizontalProductSection";
 import SectionHeading from "@/components/site/SectionHeading";
+import BrandedLoader from "@/components/BrandedLoader";
 
 const HERO_IMAGES = [
   "https://media.base44.com/images/public/6abc6a8a4b6c9d175aa35566/d51d95ee0_IMG_7842.jpeg",
@@ -42,7 +43,15 @@ export default function Home() {
         <div className="absolute inset-0 grid grid-cols-2 md:grid-cols-4 gap-1 opacity-90">
           {HERO_IMAGES.map((src, i) => (
             <div key={i} className="relative overflow-hidden h-full">
-              <img src={src} alt="" className="w-full h-full object-cover animate-slow-zoom" style={{ animationDelay: `${i * 1.5}s` }} />
+              <img
+                src={src}
+                alt="Sourced Nexus Luxury Collection"
+                loading={i === 0 ? "eager" : "lazy"}
+                fetchPriority={i === 0 ? "high" : "auto"}
+                decoding="async"
+                className="w-full h-full object-cover animate-slow-zoom"
+                style={{ animationDelay: `${i * 1.5}s` }}
+              />
               <div className="absolute inset-0 bg-background/30" />
             </div>
           ))}
@@ -138,7 +147,7 @@ export default function Home() {
 
       {/* HORIZONTAL PRODUCT SECTIONS */}
       {loading ? (
-        <div className="py-20 text-center text-muted-foreground text-sm tracking-wide-2 uppercase">Loading collection…</div>
+        <BrandedLoader fullScreen={false} text="Curating Collection..." />
       ) : (
         <>
           {newArrivals.length > 0 && (

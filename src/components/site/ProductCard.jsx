@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { buildWhatsAppUrl, productInquiryMessage } from "@/lib/whatsapp";
 
@@ -14,24 +15,35 @@ const STATUS_LABELS = {
 };
 
 export default function ProductCard({ product }) {
+  const [imageLoaded, setImageLoaded] = useState(false);
   const img = product.images?.[0];
   const status = product.status || "available";
 
   return (
     <div className="group snap-start">
       <Link to={`/product/${product.id}`} className="block">
-        <div className="relative aspect-[3/4] overflow-hidden bg-muted">
+        <div className="relative aspect-[3/4] overflow-hidden bg-zinc-900">
+          {/* Skeleton while loading */}
+          {img && !imageLoaded && (
+            <div className="absolute inset-0 bg-zinc-800/60 animate-pulse flex items-center justify-center">
+              <span className="text-[9px] tracking-luxe text-zinc-500 uppercase">SN</span>
+            </div>
+          )}
           {img ? (
             <img
               src={img}
               alt={product.name}
               loading="lazy"
-              className="w-full h-full object-cover transition-transform duration-1000 ease-out group-hover:scale-105"
+              decoding="async"
+              onLoad={() => setImageLoaded(true)}
+              className={`w-full h-full object-cover transition-all duration-700 ease-out group-hover:scale-105 ${
+                imageLoaded ? "opacity-100" : "opacity-0"
+              }`}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs tracking-wide-2">SOURCED NEXUS</div>
           )}
-          <span className={`absolute top-3 left-3 text-[9px] tracking-wide-2 uppercase px-2.5 py-1 ${STATUS_STYLES[status]}`}>
+          <span className={`absolute top-3 left-3 text-[9px] tracking-wide-2 uppercase px-2.5 py-1 z-10 ${STATUS_STYLES[status]}`}>
             {STATUS_LABELS[status]}
           </span>
         </div>

@@ -4,6 +4,7 @@ import { Search, SlidersHorizontal } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import ProductCard from "@/components/site/ProductCard";
 import ScrollReveal from "@/components/site/ScrollReveal";
+import BrandedLoader from "@/components/BrandedLoader";
 
 const CATEGORIES = ["All", "Dresses", "Suits", "Heels", "Shoes"];
 const SORTS = [
@@ -116,7 +117,7 @@ export default function Catalog() {
       <section className="py-12 md:py-16">
         <div className="mx-auto max-w-7xl px-5 md:px-8">
           {loading ? (
-            <p className="text-center text-muted-foreground text-sm tracking-wide-2 uppercase py-20">Loading products…</p>
+            <BrandedLoader fullScreen={false} text="Loading Catalog..." />
           ) : filtered.length === 0 ? (
             <div className="text-center py-20">
               <p className="font-display text-3xl">No products found</p>

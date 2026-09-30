@@ -5,6 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { buildWhatsAppUrl, productInquiryMessage, WHATSAPP_DISPLAY } from "@/lib/whatsapp";
 import ScrollReveal from "@/components/site/ScrollReveal";
 import ShareBar from "@/components/site/ShareBar";
+import BrandedLoader from "@/components/BrandedLoader";
 
 const STATUS_LABELS = { available: "Available", preorder: "Pre-Order", soldout: "Sold Out" };
 
@@ -43,7 +44,7 @@ export default function ProductDetail() {
   }, [product]);
 
   if (loading) {
-    return <div className="pt-32 text-center text-muted-foreground text-sm tracking-wide-2 uppercase">Loading product…</div>;
+    return <BrandedLoader fullScreen={false} text="Loading Product Details..." />;
   }
   if (!product) {
     return (
@@ -69,7 +70,13 @@ export default function ProductDetail() {
           <div>
             <div className="relative aspect-[3/4] overflow-hidden bg-muted group cursor-zoom-in" onClick={() => images[activeImg] && setLightbox(true)}>
               {images[activeImg] ? (
-                <img src={images[activeImg]} alt={product.name} className="w-full h-full object-cover" />
+                <img
+                  src={images[activeImg]}
+                  alt={product.name}
+                  fetchPriority="high"
+                  decoding="async"
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs tracking-wide-2">NO IMAGE</div>
               )}

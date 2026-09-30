@@ -11,6 +11,8 @@ const NAV = [
   { to: "/admin/preorders", label: "Pre-Orders", icon: ClipboardList },
 ];
 
+import BrandedLoader from "@/components/BrandedLoader";
+
 export default function AdminLayout() {
   const { user, isAuthenticated, isLoadingAuth, logout } = useAuth();
   const location = useLocation();
@@ -20,7 +22,7 @@ export default function AdminLayout() {
   useEffect(() => { setOpen(false); }, [location.pathname]);
 
   if (isLoadingAuth) {
-    return <div className="fixed inset-0 flex items-center justify-center"><div className="w-8 h-8 border-4 border-muted border-t-foreground rounded-full animate-spin" /></div>;
+    return <BrandedLoader text="Accessing Portal..." />;
   }
   if (!isAuthenticated) {
     return <Navigate to="/login?returnTo=/admin" replace />;
