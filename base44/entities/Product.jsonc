@@ -1,0 +1,96 @@
+{
+  "name": "Product",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Product name"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "price": {
+      "type": "string",
+      "title": "Price",
+      "description": "Optional \u2014 e.g. K350. Leave blank to show 'Price on request' and let admins set it later."
+    },
+    "category": {
+      "type": "string",
+      "title": "Category"
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Image URLs"
+    },
+    "sizes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Available sizes"
+    },
+    "colors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Available colors"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "available",
+        "preorder",
+        "soldout",
+        "hidden"
+      ],
+      "default": "available",
+      "title": "Status"
+    },
+    "is_new_arrival": {
+      "type": "boolean",
+      "default": false,
+      "title": "New arrival"
+    },
+    "is_popular": {
+      "type": "boolean",
+      "default": false,
+      "title": "Popular pick"
+    },
+    "delivery_info": {
+      "type": "string",
+      "default": "7\u201314 working days",
+      "title": "Delivery info"
+    }
+  },
+  "required": [
+    "name",
+    "category"
+  ],
+  "rls": {
+    "read": {
+      "data.status": {
+        "$ne": "hidden"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

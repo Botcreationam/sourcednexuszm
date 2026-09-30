@@ -1,0 +1,72 @@
+{
+  "name": "Preorder",
+  "type": "object",
+  "properties": {
+    "customer_name": {
+      "type": "string",
+      "title": "Customer name"
+    },
+    "phone": {
+      "type": "string",
+      "title": "Phone"
+    },
+    "whatsapp": {
+      "type": "string",
+      "title": "WhatsApp number"
+    },
+    "requested_image": {
+      "type": "string",
+      "title": "Requested outfit image (private URI)"
+    },
+    "category": {
+      "type": "string",
+      "title": "Category"
+    },
+    "size": {
+      "type": "string",
+      "title": "Size"
+    },
+    "color": {
+      "type": "string",
+      "title": "Color / preference"
+    },
+    "message": {
+      "type": "string",
+      "title": "Additional message"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "contacted",
+        "processing",
+        "sourced",
+        "completed",
+        "cancelled"
+      ],
+      "default": "new",
+      "title": "Status"
+    }
+  },
+  "required": [
+    "customer_name"
+  ],
+  "rls": {
+    "create": {},
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

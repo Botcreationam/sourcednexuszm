@@ -1,0 +1,171 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Jost:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Base — warm cream / off-white */
+    --background: 40 33% 96%;
+    --foreground: 20 14% 10%;
+
+    /* Cards & Popovers */
+    --card: 40 40% 99%;
+    --card-foreground: 20 14% 10%;
+    --popover: 40 40% 99%;
+    --popover-foreground: 20 14% 10%;
+
+    /* Brand accent — deep obsidian black */
+    --primary: 20 14% 10%;
+    --primary-foreground: 40 33% 96%;
+
+    /* Secondary — soft beige */
+    --secondary: 38 24% 90%;
+    --secondary-foreground: 20 14% 10%;
+
+    /* Muted — taupe */
+    --muted: 36 18% 88%;
+    --muted-foreground: 30 8% 42%;
+
+    /* Accent — warm taupe */
+    --accent: 32 16% 82%;
+    --accent-foreground: 20 14% 10%;
+
+    /* Utility */
+    --destructive: 0 60% 45%;
+    --destructive-foreground: 40 33% 96%;
+    --border: 35 16% 86%;
+    --input: 35 16% 86%;
+    --ring: 20 14% 10%;
+
+    /* Charts */
+    --chart-1: 20 14% 10%;
+    --chart-2: 36 24% 70%;
+    --chart-3: 30 12% 50%;
+    --chart-4: 40 33% 80%;
+    --chart-5: 20 10% 30%;
+
+    /* Misc */
+    --radius: 0.25rem;
+    --font-heading: 'Cormorant Garamond', ui-serif, Georgia, serif;
+    --font-body: 'Jost', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Cormorant Garamond', ui-serif, Georgia, serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+    /* Sidebar */
+    --sidebar-background: 40 33% 96%;
+    --sidebar-foreground: 20 14% 10%;
+    --sidebar-primary: 20 14% 10%;
+    --sidebar-primary-foreground: 40 33% 96%;
+    --sidebar-accent: 36 18% 88%;
+    --sidebar-accent-foreground: 20 14% 10%;
+    --sidebar-border: 35 16% 86%;
+    --sidebar-ring: 20 14% 10%;
+
+    /* Brand custom tokens */
+    --cream: 40 33% 96%;
+    --obsidian: 20 14% 10%;
+    --taupe: 32 16% 82%;
+    --sand: 38 24% 90%;
+  }
+
+  .dark {
+    --background: 20 14% 8%;
+    --foreground: 40 33% 92%;
+    --card: 20 14% 11%;
+    --card-foreground: 40 33% 92%;
+    --popover: 20 14% 11%;
+    --popover-foreground: 40 33% 92%;
+    --primary: 40 33% 96%;
+    --primary-foreground: 20 14% 10%;
+    --secondary: 20 10% 16%;
+    --secondary-foreground: 40 33% 92%;
+    --muted: 20 10% 16%;
+    --muted-foreground: 40 12% 65%;
+    --accent: 20 10% 20%;
+    --accent-foreground: 40 33% 92%;
+    --destructive: 0 60% 45%;
+    --destructive-foreground: 40 33% 96%;
+    --border: 20 10% 20%;
+    --input: 20 10% 20%;
+    --ring: 40 33% 96%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-body;
+    font-weight: 300;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 400;
+  }
+
+  button {
+    font-weight: 400;
+  }
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom selection */
+::selection {
+  background-color: hsl(20 14% 10%);
+  color: hsl(40 33% 96%);
+}
+
+/* Thin elegant scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: hsl(40 33% 96%); }
+::-webkit-scrollbar-thumb { background: hsl(35 16% 80%); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(32 16% 70%); }
+
+/* Hide scrollbar for horizontal carousels */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Reveal animation */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slow-zoom {
+  from { transform: scale(1); }
+  to { transform: scale(1.08); }
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.animate-fade-up { animation: fade-up 0.9s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-fade-in { animation: fade-in 1.2s ease both; }
+.animate-slow-zoom { animation: slow-zoom 12s ease-out forwards; }
+.animate-marquee { animation: marquee 32s linear infinite; }
+
+/* Tracking helpers */
+.tracking-luxe { letter-spacing: 0.35em; }
+.tracking-wide-2 { letter-spacing: 0.2em; }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  html { scroll-behavior: auto; }
+}
