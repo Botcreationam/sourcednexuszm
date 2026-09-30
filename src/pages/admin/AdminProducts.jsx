@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, Eye, EyeOff, X, Upload, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { isSupabaseConfigured, supabase, uploadImageToSupabase } from "@/lib/supabase";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -34,15 +35,32 @@ export default function AdminProducts() {
   const [selected, setSelected] = useState(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
-  const load = () => {
+  const load = async () => {
     setLoading(true);
-    Promise.all([
-      base44.entities.Product.list("-created_date", 200),
-      base44.entities.Category.list("-created_date", 50),
-    ]).then(([p, c]) => { setProducts(p); setCategories(c); }).finally(() => setLoading(false));
+    try {
+      if (isSupabaseConfigured) {
+        const [pRes, cRes] = await Promise.all([
+          supabase.from("products").select("*").order("created_at", { ascending: false }),
+          supabase.from("categories").select("*").order("display_order", { ascending: true }),
+        ]);
+        if (pRes.data) setProducts(pRes.data);
+        if (cRes.data) setCategories(cRes.data);
+        return;
+      }
+      const [p, c] = await Promise.all([
+        base44.entities.Product.list("-created_date", 200),
+        base44.entities.Category.list("-created_date", 50),
+      ]);
+      setProducts(p);
+      setCategories(c);
+    } catch (err) {
+      console.error("Load error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(load, []);
+  useEffect(() => { load(); }, []);
 
   const openAdd = () => {
     setEditing(null);
@@ -69,8 +87,17 @@ export default function AdminProducts() {
     if (!files.length) return;
     setUploading(true);
     try {
-      const uploaded = await Promise.all(files.map((f) => base44.integrations.Core.UploadPublicFile({ file: f })));
-      setImages((prev) => [...prev, ...uploaded.map((r) => r.file_url)]);
+      let urls = [];
+      if (isSupabaseConfigured) {
+        urls = await Promise.all(files.map((f) => uploadImageToSupabase(f, "product-images")));
+      } else {
+        const uploaded = await Promise.all(files.map((f) => base44.integrations.Core.UploadPublicFile({ file: f })));
+        urls = uploaded.map((r) => r.file_url);
+      }
+      setImages((prev) => [...prev, ...urls]);
+    } catch (err) {
+      console.error("Image upload error:", err);
+      alert("Image upload failed: " + (err.message || "Unknown error"));
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -90,13 +117,26 @@ export default function AdminProducts() {
       images,
     };
     try {
-      if (editing) await base44.entities.Product.update(editing.id, payload);
-      else await base44.entities.Product.create(payload);
+      if (isSupabaseConfigured) {
+        if (editing) {
+          const { error } = await supabase.from("products").update(payload).eq("id", editing.id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from("products").insert([payload]);
+          if (error) throw error;
+        }
+      } else {
+        if (editing) await base44.entities.Product.update(editing.id, payload);
+        else await base44.entities.Product.create(payload);
+      }
       setModalOpen(false);
       setEditing(null);
       setForm(emptyForm);
       setImages([]);
       load();
+    } catch (err) {
+      console.error("Save error:", err);
+      alert("Failed to save product: " + (err.message || "Unknown error"));
     } finally {
       setSaving(false);
     }
@@ -104,13 +144,22 @@ export default function AdminProducts() {
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
-    await base44.entities.Product.delete(deleteTarget.id);
+    if (isSupabaseConfigured) {
+      await supabase.from("products").delete().eq("id", deleteTarget.id);
+    } else {
+      await base44.entities.Product.delete(deleteTarget.id);
+    }
     setDeleteTarget(null);
     load();
   };
 
   const toggleHide = async (p) => {
-    await base44.entities.Product.update(p.id, { status: p.status === "hidden" ? "available" : "hidden" });
+    const nextStatus = p.status === "hidden" ? "available" : "hidden";
+    if (isSupabaseConfigured) {
+      await supabase.from("products").update({ status: nextStatus }).eq("id", p.id);
+    } else {
+      await base44.entities.Product.update(p.id, { status: nextStatus });
+    }
     load();
   };
 

@@ -4,6 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { buildWhatsAppUrl, photoSourcingMessage, preorderNotificationMessage, WHATSAPP_DISPLAY } from "@/lib/whatsapp";
 import ScrollReveal from "@/components/site/ScrollReveal";
 import { toast } from "@/components/ui/use-toast";
+import { isSupabaseConfigured, uploadImageToSupabase, createSupabasePreorder } from "@/lib/supabase";
 
 const CATEGORIES = ["Dresses", "Suits", "Heels", "Shoes", "Other"];
 const SIZES = ["XS", "S", "M", "L", "XL", "36", "37", "38", "39", "40", "41", "42", "43", "One Size"];
@@ -33,10 +34,18 @@ export default function PreOrder() {
     try {
       let requested_image = "";
       if (imageFile) {
-        const res = await base44.integrations.Core.UploadPrivateFile({ file: imageFile });
-        requested_image = res.file_uri;
+        if (isSupabaseConfigured) {
+          requested_image = await uploadImageToSupabase(imageFile, "preorder-uploads");
+        } else {
+          const res = await base44.integrations.Core.UploadPrivateFile({ file: imageFile });
+          requested_image = res.file_uri;
+        }
       }
-      await base44.entities.Preorder.create({ ...form, requested_image, status: "new" });
+      if (isSupabaseConfigured) {
+        await createSupabasePreorder({ ...form, requested_image });
+      } else {
+        await base44.entities.Preorder.create({ ...form, requested_image, status: "new" });
+      }
       setDone(true);
     } catch (err) {
       console.error("Failed to submit preorder:", err);

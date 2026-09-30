@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, X, Upload, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { isSupabaseConfigured, supabase, uploadImageToSupabase } from "@/lib/supabase";
 
 const empty = { name: "", slug: "", description: "", image: "" };
 
@@ -12,11 +13,23 @@ export default function AdminCategories() {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const load = () => {
+  const load = async () => {
     setLoading(true);
-    base44.entities.Category.list("-created_date", 50).then(setCategories).finally(() => setLoading(false));
+    try {
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase.from("categories").select("*").order("display_order", { ascending: true });
+        if (!error && data) setCategories(data);
+        return;
+      }
+      const data = await base44.entities.Category.list("-created_date", 50);
+      setCategories(data);
+    } catch (err) {
+      console.error("Load categories error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
-  useEffect(load, []);
+  useEffect(() => { load(); }, []);
 
   const openAdd = () => { setEditing(null); setForm(empty); };
   const openEdit = (c) => { setEditing(c); setForm({ name: c.name || "", slug: c.slug || "", description: c.description || "", image: c.image || "" }); };
@@ -27,9 +40,21 @@ export default function AdminCategories() {
     if (!file) return;
     setUploading(true);
     try {
-      const res = await base44.integrations.Core.UploadPublicFile({ file });
-      update("image", res.file_url);
-    } finally { setUploading(false); e.target.value = ""; }
+      let imageUrl = "";
+      if (isSupabaseConfigured) {
+        imageUrl = await uploadImageToSupabase(file, "category-images");
+      } else {
+        const res = await base44.integrations.Core.UploadPublicFile({ file });
+        imageUrl = res.file_url;
+      }
+      update("image", imageUrl);
+    } catch (err) {
+      console.error("Category image upload error:", err);
+      alert("Image upload failed: " + (err.message || "Unknown error"));
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
   };
 
   const save = async (e) => {
@@ -37,16 +62,38 @@ export default function AdminCategories() {
     if (!form.name) return;
     setSaving(true);
     const slug = form.slug || form.name.toLowerCase().replace(/\s+/g, "-");
+    const payload = { ...form, slug };
     try {
-      if (editing) await base44.entities.Category.update(editing.id, { ...form, slug });
-      else await base44.entities.Category.create({ ...form, slug });
-      setEditing(null); setForm(empty); load();
-    } finally { setSaving(false); }
+      if (isSupabaseConfigured) {
+        if (editing) {
+          const { error } = await supabase.from("categories").update(payload).eq("id", editing.id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from("categories").insert([payload]);
+          if (error) throw error;
+        }
+      } else {
+        if (editing) await base44.entities.Category.update(editing.id, payload);
+        else await base44.entities.Category.create(payload);
+      }
+      setEditing(null);
+      setForm(empty);
+      load();
+    } catch (err) {
+      console.error("Category save error:", err);
+      alert("Failed to save category: " + (err.message || "Unknown error"));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const remove = async (c) => {
     if (!confirm(`Delete category "${c.name}"?`)) return;
-    await base44.entities.Category.delete(c.id);
+    if (isSupabaseConfigured) {
+      await supabase.from("categories").delete().eq("id", c.id);
+    } else {
+      await base44.entities.Category.delete(c.id);
+    }
     load();
   };
 
