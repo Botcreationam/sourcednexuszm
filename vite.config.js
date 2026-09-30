@@ -2,6 +2,9 @@ import base44 from "@base44/vite-plugin"
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
+process.env.VITE_BASE44_APP_ID = process.env.VITE_BASE44_APP_ID || "6abc6a8a4b6c9d175aa35566";
+process.env.VITE_BASE44_APP_BASE_URL = process.env.VITE_BASE44_APP_BASE_URL || "https://base44.app";
+
 // https://vite.dev/config/
 export default defineConfig({
   logLevel: 'error', // Suppress warnings, only show errors
