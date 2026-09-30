@@ -55,19 +55,23 @@ npx supabase db reset --linked # or run seed.sql via psql
 Three public storage buckets are created automatically:
 
 | Bucket Name | Purpose | Permissions |
-|---|---|---|
+| --- | --- | --- |
 | `product-images` | High-res catalog product photography | Public Read, Admin Write |
 | `category-images` | Category showcase banners | Public Read, Admin Write |
 | `preorder-uploads` | Customer outfit photos uploaded via Pre-Order form | Public Read, Public Upload |
 
 ### How Public Image URLs Work
+
 Uploaded images in Supabase Storage have the following CDN URL format:
-```
+
+```text
 https://<YOUR-PROJECT-REF>.supabase.co/storage/v1/object/public/<BUCKET-NAME>/<IMAGE-FILE-NAME>
 ```
 
 ### Uploading from Code
+
 Use the helper in `src/lib/supabase.js`:
+
 ```javascript
 import { uploadImageToSupabase } from '@/lib/supabase';
 

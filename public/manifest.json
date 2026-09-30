@@ -1,12 +1,17 @@
 {
   "short_name": "Sourced Nexus",
-  "name": "Sourced Nexus — Curated Luxury Fashion Sourcing",
-  "description": "Curated Luxury Fashion Sourcing in Lusaka, Zambia",
+  "name": "Sourced Nexus — Luxury Fashion, Electronics & Watches Sourcing",
+  "description": "Curated Luxury Sourcing in Lusaka, Zambia",
   "icons": [
     {
       "src": "/favicon.svg",
       "type": "image/svg+xml",
       "sizes": "any"
+    },
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "1000x1000"
     }
   ],
   "start_url": "/",

@@ -14,15 +14,15 @@ export default function BrandedLoader({ fullScreen = true, text = "Loading..." }
         {/* Inner subtle counter-spinning ring */}
         <div className="absolute inset-2 rounded-full border border-dashed border-[#E5C378]/30 animate-spin [animation-duration:6s] [animation-direction:reverse]" />
 
-        {/* Central Logo Emblem */}
-        <div className="relative w-16 h-16 rounded-2xl bg-zinc-950/90 border border-[#C5A059]/40 shadow-2xl flex items-center justify-center p-3 overflow-hidden backdrop-blur-md">
+        {/* Central Logo Emblem - Strictly Round */}
+        <div className="relative w-20 h-20 rounded-full bg-[#f6f4ee] border-2 border-[#C5A059]/60 shadow-[0_4px_24px_rgba(0,0,0,0.12)] flex items-center justify-center overflow-hidden p-0 backdrop-blur-md">
           {/* Shimmer light effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#E5C378]/15 to-transparent -translate-x-full animate-[shimmer_2.5s_infinite]" />
+          <div className="absolute inset-0 z-10 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_2.5s_infinite] pointer-events-none" />
           
           <img
-            src="/favicon.svg"
+            src="/logo.png"
             alt="Sourced Nexus"
-            className="w-full h-full object-contain filter drop-shadow-[0_2px_8px_rgba(229,195,120,0.3)] animate-pulse"
+            className="w-full h-full object-cover rounded-full"
           />
         </div>
       </div>

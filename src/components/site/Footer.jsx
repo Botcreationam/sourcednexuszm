@@ -10,8 +10,8 @@ export default function Footer() {
           <div className="md:col-span-1">
             <h3 className="font-display text-2xl tracking-wide-2">SOURCED NEXUS</h3>
             <p className="text-[10px] tracking-luxe text-cream/60 mt-1">LUSAKA • ZAMBIA</p>
-            <p className="mt-5 text-sm font-light text-cream/70 max-w-xs italic font-display text-lg">
-              Your Style. Sourced For You.
+            <p className="mt-5 text-base font-light text-cream/70 max-w-xs italic font-display">
+              Your Style & Tech. Sourced For You.
             </p>
           </div>
 
