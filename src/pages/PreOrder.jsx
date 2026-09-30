@@ -6,8 +6,18 @@ import ScrollReveal from "@/components/site/ScrollReveal";
 import { toast } from "@/components/ui/use-toast";
 import { isSupabaseConfigured, uploadImageToSupabase, createSupabasePreorder } from "@/lib/supabase";
 
-const CATEGORIES = ["Dresses", "Suits", "Heels", "Shoes", "Other"];
-const SIZES = ["XS", "S", "M", "L", "XL", "36", "37", "38", "39", "40", "41", "42", "43", "One Size"];
+const CATEGORIES = [
+  "Electronics",
+  "Watches",
+  "Dresses",
+  "Suits",
+  "Heels",
+  "Shoes",
+  "Bags & Accessories",
+  "Perfumes",
+  "Other",
+];
+const SIZES = ["Standard / N/A", "XS", "S", "M", "L", "XL", "XXL", "36", "37", "38", "39", "40", "41", "42", "43", "44", "One Size"];
 
 export default function PreOrder() {
   const [form, setForm] = useState({

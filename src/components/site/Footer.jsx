@@ -21,6 +21,7 @@ export default function Footer() {
               <li><Link to="/" className="hover:text-cream transition-colors">Home</Link></li>
               <li><Link to="/catalog" className="hover:text-cream transition-colors">Catalog</Link></li>
               <li><Link to="/categories" className="hover:text-cream transition-colors">Categories</Link></li>
+              <li><Link to="/how-it-works" className="hover:text-cream transition-colors">How It Works</Link></li>
               <li><Link to="/pre-order" className="hover:text-cream transition-colors">Pre-Order</Link></li>
               <li><Link to="/contact" className="hover:text-cream transition-colors">Contact</Link></li>
             </ul>
@@ -29,10 +30,12 @@ export default function Footer() {
           <div>
             <h4 className="text-[11px] tracking-luxe uppercase text-cream/50 mb-4">Categories</h4>
             <ul className="space-y-2.5 text-sm font-light text-cream/80">
+              <li><Link to="/catalog?category=Electronics" className="hover:text-cream transition-colors">Electronics & Tech</Link></li>
+              <li><Link to="/catalog?category=Watches" className="hover:text-cream transition-colors">Luxury Watches</Link></li>
               <li><Link to="/catalog?category=Dresses" className="hover:text-cream transition-colors">Dresses</Link></li>
               <li><Link to="/catalog?category=Suits" className="hover:text-cream transition-colors">Suits</Link></li>
+              <li><Link to="/catalog?category=Shoes" className="hover:text-cream transition-colors">Shoes & Sneakers</Link></li>
               <li><Link to="/catalog?category=Heels" className="hover:text-cream transition-colors">Heels</Link></li>
-              <li><Link to="/catalog?category=Shoes" className="hover:text-cream transition-colors">Shoes</Link></li>
             </ul>
           </div>
 

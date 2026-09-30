@@ -16,6 +16,8 @@ const HERO_IMAGES = [
 ];
 
 const CATEGORIES = [
+  { name: "Electronics", img: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80" },
+  { name: "Watches", img: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=800&auto=format&fit=crop&q=80" },
   { name: "Dresses", img: "https://media.base44.com/images/public/6abc6a8a4b6c9d175aa35566/d51d95ee0_IMG_7842.jpeg" },
   { name: "Suits", img: "https://media.base44.com/images/public/6abc6a8a4b6c9d175aa35566/cd6535153_IMG_7593.jpeg" },
   { name: "Heels", img: "https://media.base44.com/images/public/6abc6a8a4b6c9d175aa35566/54f2cdec4_IMG_7898.jpeg" },
@@ -65,12 +67,12 @@ export default function Home() {
           </ScrollReveal>
           <ScrollReveal delay={0.25}>
             <h1 className="font-display text-5xl md:text-7xl lg:text-8xl leading-[0.95] mt-6 max-w-4xl mx-auto">
-              Your Style.<br />Sourced For You.
+              Your Style & Tech.<br />Sourced For You.
             </h1>
           </ScrollReveal>
           <ScrollReveal delay={0.4}>
-            <p className="mt-6 text-sm md:text-base font-light text-foreground/70 max-w-md mx-auto">
-              See the perfect outfit? Send us a photo and we'll handle the rest.
+            <p className="mt-6 text-sm md:text-base font-light text-foreground/70 max-w-lg mx-auto">
+              See the perfect outfit, gadget, or luxury timepiece? Send us a photo or link and we'll handle the rest.
             </p>
           </ScrollReveal>
           <ScrollReveal delay={0.55}>
@@ -121,22 +123,34 @@ export default function Home() {
               </ScrollReveal>
             ))}
           </div>
+          <div className="mt-12 text-center">
+            <Link
+              to="/how-it-works"
+              className="inline-flex items-center gap-2 border border-border px-6 py-3 text-[11px] tracking-wide-2 uppercase hover:bg-muted transition-colors"
+            >
+              Explore Full How It Works Guide <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* CATEGORIES SHOWCASE */}
       <section className="py-20 md:py-28 bg-secondary/40">
         <div className="mx-auto max-w-7xl px-5 md:px-8">
-          <SectionHeading eyebrow="Categories" title="Shop By Category" subtitle="From elegant dresses to sharp suits and statement footwear." />
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5 mt-14">
+          <SectionHeading
+            eyebrow="Categories"
+            title="Shop By Category"
+            subtitle="From cutting-edge electronics and luxury watches to couture fashion and footwear."
+          />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4 mt-14">
             {CATEGORIES.map((c, i) => (
-              <ScrollReveal key={c.name} delay={i * 0.1}>
+              <ScrollReveal key={c.name} delay={i * 0.08}>
                 <Link to={`/catalog?category=${c.name}`} className="group relative block aspect-[3/4] overflow-hidden">
                   <img src={c.img} alt={c.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 via-foreground/10 to-transparent" />
-                  <div className="absolute bottom-0 inset-x-0 p-5 text-center">
-                    <h3 className="font-display text-2xl md:text-3xl text-cream">{c.name}</h3>
-                    <span className="text-[10px] tracking-wide-2 uppercase text-cream/70 mt-1 inline-block opacity-0 group-hover:opacity-100 transition-opacity">Shop Now →</span>
+                  <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-foreground/20 to-transparent" />
+                  <div className="absolute bottom-0 inset-x-0 p-4 text-center">
+                    <h3 className="font-display text-xl md:text-2xl text-cream">{c.name}</h3>
+                    <span className="text-[9px] tracking-wide-2 uppercase text-cream/70 mt-1 inline-block opacity-0 group-hover:opacity-100 transition-opacity">Shop →</span>
                   </div>
                 </Link>
               </ScrollReveal>
@@ -155,6 +169,12 @@ export default function Home() {
           )}
           {popular.length > 0 && (
             <HorizontalProductSection eyebrow="Loved By You" title="Popular Picks" products={popular} viewAllTo="/catalog" />
+          )}
+          {byCategory("Electronics").length > 0 && (
+            <HorizontalProductSection eyebrow="Technology" title="Electronics & Gadgets" products={byCategory("Electronics")} viewAllTo="/catalog?category=Electronics" />
+          )}
+          {byCategory("Watches").length > 0 && (
+            <HorizontalProductSection eyebrow="Horology" title="Luxury Watches" products={byCategory("Watches")} viewAllTo="/catalog?category=Watches" />
           )}
           {byCategory("Dresses").length > 0 && (
             <HorizontalProductSection eyebrow="Collection" title="Dresses" products={byCategory("Dresses")} viewAllTo="/catalog?category=Dresses" />

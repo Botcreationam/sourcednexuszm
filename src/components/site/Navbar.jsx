@@ -6,7 +6,7 @@ const LINKS = [
   { label: "Home", to: "/" },
   { label: "Shop", to: "/catalog" },
   { label: "Categories", to: "/categories" },
-  { label: "How It Works", to: "/#how-it-works" },
+  { label: "How It Works", to: "/how-it-works" },
   { label: "Pre-Order", to: "/pre-order" },
   { label: "Contact", to: "/contact" },
 ];
@@ -30,11 +30,14 @@ export default function Navbar() {
     setOpen(false);
     if (to.includes("#")) {
       const [path, hash] = to.split("#");
-      if (path && path !== "/" && location.pathname !== path) {
-        navigate(path);
-        setTimeout(() => document.getElementById(hash)?.scrollIntoView({ behavior: "smooth" }), 400);
+      const targetPath = path || "/";
+      if (location.pathname !== targetPath) {
+        navigate(to);
       } else {
-        document.getElementById(hash)?.scrollIntoView({ behavior: "smooth" });
+        const el = document.getElementById(hash);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth" });
+        }
       }
     } else {
       navigate(to);

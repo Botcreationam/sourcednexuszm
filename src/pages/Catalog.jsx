@@ -6,7 +6,17 @@ import ProductCard from "@/components/site/ProductCard";
 import ScrollReveal from "@/components/site/ScrollReveal";
 import BrandedLoader from "@/components/BrandedLoader";
 
-const CATEGORIES = ["All", "Dresses", "Suits", "Heels", "Shoes"];
+const CATEGORIES = [
+  "All",
+  "Electronics",
+  "Watches",
+  "Dresses",
+  "Suits",
+  "Shoes",
+  "Heels",
+  "Bags & Accessories",
+  "Perfumes",
+];
 const SORTS = [
   { value: "newest", label: "Newest" },
   { value: "price-asc", label: "Price: Low to High" },
@@ -43,7 +53,18 @@ export default function Catalog() {
 
   const filtered = useMemo(() => {
     let list = [...products];
-    if (category !== "All") list = list.filter((p) => p.category === category);
+    if (category !== "All") {
+      const target = category.toLowerCase().trim();
+      list = list.filter((p) => {
+        const cat = (p.category || "").toLowerCase().trim();
+        return (
+          cat === target ||
+          (target === "electronics" && (cat.includes("electr") || cat.includes("tech") || cat.includes("gadget"))) ||
+          (target === "watches" && (cat.includes("watch") || cat.includes("horolog"))) ||
+          (target === "bags & accessories" && (cat.includes("bag") || cat.includes("accessor")))
+        );
+      });
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((p) => p.name?.toLowerCase().includes(q) || p.category?.toLowerCase().includes(q));

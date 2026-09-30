@@ -11,6 +11,7 @@ import Catalog from './pages/Catalog';
 import ProductDetail from './pages/ProductDetail';
 import Categories from './pages/Categories';
 import PreOrder from './pages/PreOrder';
+import HowItWorks from './pages/HowItWorks';
 import Contact from './pages/Contact';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -64,6 +65,7 @@ const AuthenticatedApp = () => {
         <Route path="/catalog" element={<Catalog />} />
         <Route path="/product/:id" element={<ProductDetail />} />
         <Route path="/categories" element={<Categories />} />
+        <Route path="/how-it-works" element={<HowItWorks />} />
         <Route path="/pre-order" element={<PreOrder />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/privacy" element={<Privacy />} />

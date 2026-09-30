@@ -171,13 +171,27 @@ export default function AdminProducts() {
   const allSelected = products.length > 0 && selected.size === products.length;
   const toggleSelectAll = () => setSelected(allSelected ? new Set() : new Set(products.map((p) => p.id)));
   const confirmBulkDelete = async () => {
-    await base44.entities.Product.deleteMany({ id: { $in: Array.from(selected) } });
+    if (isSupabaseConfigured) {
+      await supabase.from("products").delete().in("id", Array.from(selected));
+    } else {
+      await base44.entities.Product.deleteMany({ id: { $in: Array.from(selected) } });
+    }
     setSelected(new Set());
     setBulkDeleteOpen(false);
     load();
   };
 
-  const catOptions = categories.length ? categories.map((c) => c.name) : ["Dresses", "Suits", "Heels", "Shoes"];
+  const catOptions = Array.from(new Set([
+    ...categories.map((c) => c.name),
+    "Electronics",
+    "Watches",
+    "Dresses",
+    "Suits",
+    "Shoes",
+    "Heels",
+    "Bags & Accessories",
+    "Perfumes",
+  ]));
 
   return (
     <div className="p-6 md:p-10 max-w-6xl">

@@ -4,11 +4,18 @@ import { base44 } from "@/api/base44Client";
 import ScrollReveal from "@/components/site/ScrollReveal";
 import SectionHeading from "@/components/site/SectionHeading";
 
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import BrandedLoader from "@/components/BrandedLoader";
+
 const DEFAULTS = [
-  { name: "Dresses", img: "https://images.unsplash.com/photo-1539109383622-4d8b9e576027?auto=format&fit=crop&w=800&q=80" },
-  { name: "Suits", img: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=800&q=80" },
-  { name: "Heels", img: "https://images.unsplash.com/photo-1543163521-1bf539c1dd198?auto=format&fit=crop&w=800&q=80" },
-  { name: "Shoes", img: "https://images.unsplash.com/photo-1549298916-b57d783b0bf6?auto=format&fit=crop&w=800&q=80" },
+  { name: "Electronics", img: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=800&q=80" },
+  { name: "Watches", img: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=800&q=80" },
+  { name: "Dresses", img: "https://media.base44.com/images/public/6abc6a8a4b6c9d175aa35566/d51d95ee0_IMG_7842.jpeg" },
+  { name: "Suits", img: "https://media.base44.com/images/public/6abc6a8a4b6c9d175aa35566/cd6535153_IMG_7593.jpeg" },
+  { name: "Shoes", img: "https://media.base44.com/images/public/6abc6a8a4b6c9d175aa35566/45ca4d997_IMG_7913.jpeg" },
+  { name: "Heels", img: "https://media.base44.com/images/public/6abc6a8a4b6c9d175aa35566/54f2cdec4_IMG_7898.jpeg" },
+  { name: "Bags & Accessories", img: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=800&q=80" },
+  { name: "Perfumes", img: "https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&fit=crop&w=800&q=80" },
 ];
 
 export default function Categories() {
@@ -16,9 +23,24 @@ export default function Categories() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    base44.entities.Category.list("-created_date", 50)
-      .then(setCategories)
-      .finally(() => setLoading(false));
+    const fetchCats = async () => {
+      try {
+        if (isSupabaseConfigured) {
+          const { data, error } = await supabase.from("categories").select("*").order("display_order", { ascending: true });
+          if (!error && data && data.length > 0) {
+            setCategories(data);
+            return;
+          }
+        }
+        const data = await base44.entities.Category.list("-created_date", 50);
+        setCategories(data);
+      } catch (err) {
+        console.error("Categories fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCats();
   }, []);
 
   const list = categories.length > 0 ? categories.map((c) => ({ name: c.name, img: c.image })) : DEFAULTS;
@@ -34,7 +56,7 @@ export default function Categories() {
       <section className="py-16 md:py-24">
         <div className="mx-auto max-w-7xl px-5 md:px-8">
           {loading ? (
-            <p className="text-center text-muted-foreground text-sm tracking-wide-2 uppercase">Loading…</p>
+            <BrandedLoader fullScreen={false} text="Loading Categories..." />
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
               {list.map((c, i) => (
