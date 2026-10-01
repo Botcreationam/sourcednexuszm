@@ -6,6 +6,11 @@ import { ADMIN_EMAIL, isAuthorizedAdmin } from '@/lib/adminAccess';
 
 const AuthContext = createContext();
 
+// Production-safe origin for auth redirects – avoids localhost:3000 leaking into
+// OAuth/magic-link callbacks. Falls back to window.location.origin for local dev.
+const SITE_ORIGIN =
+  import.meta.env.VITE_SITE_URL?.replace(/\/$/, '') || window.location.origin;
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
@@ -227,7 +232,7 @@ export const AuthProvider = ({ children }) => {
   const resetPassword = async (email, options = {}) => {
     if (isSupabaseConfigured && supabase) {
       const resetOptions = {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${SITE_ORIGIN}/reset-password`,
       };
       if (options?.captchaToken) {
         resetOptions.captchaToken = options.captchaToken;
@@ -251,11 +256,10 @@ export const AuthProvider = ({ children }) => {
         sessionStorage.setItem('sn_oauth_return_to', returnTo || '/');
       } catch {}
 
-      const redirectOrigin = window.location.origin;
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: redirectOrigin,
+          redirectTo: SITE_ORIGIN,
           queryParams: {
             access_type: 'offline',
             prompt: 'select_account',
