@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate, Navigate, NavLink } from "react-router-dom";
-import { LayoutDashboard, Shirt, Tags, ClipboardList, ExternalLink, LogOut, Menu, X, MessageSquareQuote } from "lucide-react";
+import { LayoutDashboard, Shirt, Tags, ClipboardList, ExternalLink, LogOut, Menu, X, MessageSquareQuote, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { ADMIN_EMAIL } from "@/lib/adminAccess";
 import { ModeToggle } from "@/components/ModeToggle";
@@ -11,6 +11,7 @@ const NAV = [
   { to: "/admin/products", label: "Products", icon: Shirt },
   { to: "/admin/categories", label: "Categories", icon: Tags },
   { to: "/admin/preorders", label: "Pre-Orders", icon: ClipboardList },
+  { to: "/admin/moderation", label: "Moderation", icon: ShieldAlert },
 ];
 
 

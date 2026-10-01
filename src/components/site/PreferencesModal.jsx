@@ -63,7 +63,8 @@ export default function PreferencesModal({ open, onClose, onOpenInterests }) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg bg-card border-border p-6 md:p-8 max-h-[85vh] overflow-y-auto no-scrollbar">
+      <DialogContent className="max-w-lg bg-card border-border p-0 md:p-0 max-h-[90vh] md:max-h-[85vh] flex flex-col overflow-hidden">
+        <div className="overflow-y-auto p-6 md:p-8 flex-1 no-scrollbar">
         <DialogHeader className="space-y-1">
           <div className="flex items-center gap-2 text-primary text-xs uppercase tracking-wide-2 mb-1">
             <Sliders className="w-4 h-4" />
@@ -187,6 +188,7 @@ export default function PreferencesModal({ open, onClose, onOpenInterests }) {
           <Button size="sm" onClick={onClose} className="bg-foreground text-background text-xs uppercase tracking-wide-2 h-8 px-4">
             Done
           </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

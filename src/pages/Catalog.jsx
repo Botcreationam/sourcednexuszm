@@ -8,17 +8,7 @@ import ProductCard from "@/components/site/ProductCard";
 import ScrollReveal from "@/components/site/ScrollReveal";
 import BrandedLoader from "@/components/BrandedLoader";
 
-const CATEGORIES = [
-  "All",
-  "Electronics",
-  "Watches",
-  "Dresses",
-  "Suits",
-  "Shoes",
-  "Heels",
-  "Bags & Accessories",
-  "Perfumes",
-];
+
 const SORTS = [
   { value: "newest", label: "Newest" },
   { value: "price-asc", label: "Price: Low to High" },
@@ -43,26 +33,34 @@ export default function Catalog() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  const [categories, setCategories] = useState(["All"]);
+
   useEffect(() => {
-    async function loadProducts() {
+    async function loadData() {
       try {
         if (isSupabaseConfigured) {
-          const sp = await getSupabaseProducts();
+          const [sp, sc] = await Promise.all([
+            getSupabaseProducts(),
+            supabase.from("categories").select("name").order("display_order", { ascending: true })
+          ]);
           if (sp && sp.length > 0) {
             setProducts(sp);
-            setLoading(false);
-            return;
           }
+          if (sc.data && sc.data.length > 0) {
+            setCategories(["All", ...sc.data.map(c => c.name)]);
+          }
+          setLoading(false);
+          return;
         }
         const bProducts = await base44.entities.Product.list("-created_date", 200);
         setProducts(bProducts || []);
       } catch (err) {
-        console.error("Failed to load products:", err);
+        console.error("Failed to load catalog data:", err);
       } finally {
         setLoading(false);
       }
     }
-    loadProducts();
+    loadData();
   }, []);
 
   const setCategory = (c) => {
@@ -83,12 +81,7 @@ export default function Catalog() {
       const target = category.toLowerCase().trim();
       list = list.filter((p) => {
         const cat = (p.category || "").toLowerCase().trim();
-        return (
-          cat === target ||
-          (target === "electronics" && (cat.includes("electr") || cat.includes("tech") || cat.includes("gadget"))) ||
-          (target === "watches" && (cat.includes("watch") || cat.includes("horolog"))) ||
-          (target === "bags & accessories" && (cat.includes("bag") || cat.includes("accessor")))
-        );
+        return cat === target;
       });
     }
     if (search.trim()) {
@@ -124,7 +117,7 @@ export default function Catalog() {
       <div className="sticky top-16 md:top-20 z-30 bg-background/90 backdrop-blur-md border-b border-border">
         <div className="mx-auto max-w-7xl px-5 md:px-8 py-4 flex flex-col md:flex-row gap-4 md:items-center justify-between">
           <div className="flex gap-2 overflow-x-auto no-scrollbar">
-            {CATEGORIES.map((c) => (
+            {categories.map((c) => (
               <button
                 key={c}
                 onClick={() => setCategory(c)}

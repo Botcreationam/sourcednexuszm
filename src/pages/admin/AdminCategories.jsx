@@ -10,6 +10,7 @@ export default function AdminCategories() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(empty);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -31,13 +32,21 @@ export default function AdminCategories() {
   };
   useEffect(() => { load(); }, []);
 
-  const openAdd = () => { setEditing(null); setForm(empty); };
-  const openEdit = (c) => { setEditing(c); setForm({ name: c.name || "", slug: c.slug || "", description: c.description || "", image: c.image || "" }); };
+  const openAdd = () => { setEditing(null); setForm(empty); setIsModalOpen(true); };
+  const openEdit = (c) => { setEditing(c); setForm({ name: c.name || "", slug: c.slug || "", description: c.description || "", image: c.image || "" }); setIsModalOpen(true); };
   const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const onFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert(`File ${file.name} exceeds the 5MB size limit.`);
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      alert(`File ${file.name} is not a valid image.`);
+      return;
+    }
     setUploading(true);
     try {
       let imageUrl = "";
@@ -77,6 +86,7 @@ export default function AdminCategories() {
         else await base44.entities.Category.create(payload);
       }
       setEditing(null);
+      setIsModalOpen(false);
       setForm(empty);
       load();
     } catch (err) {
@@ -134,12 +144,12 @@ export default function AdminCategories() {
         </div>
       )}
 
-      {editing !== null && (
-        <div className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm flex items-start md:items-center justify-center p-4 overflow-y-auto" onClick={() => setEditing(null)}>
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm flex items-start md:items-center justify-center p-4 overflow-y-auto" onClick={() => setIsModalOpen(false)}>
           <div className="bg-background border border-border w-full max-w-md my-8" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <h2 className="font-display text-2xl">{editing ? "Edit Category" : "Add Category"}</h2>
-              <button onClick={() => setEditing(null)}><X className="w-5 h-5" /></button>
+              <button onClick={() => setIsModalOpen(false)}><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={save} className="px-6 py-5 space-y-4">
               <In label="Name *"><input required value={form.name} onChange={(e) => update("name", e.target.value)} className={inp} /></In>
@@ -158,7 +168,7 @@ export default function AdminCategories() {
               </In>
               <div className="flex gap-3 pt-2">
                 <button type="submit" disabled={saving} className="flex-1 bg-foreground text-background py-3 text-[11px] tracking-wide-2 uppercase hover:opacity-85 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
-                <button type="button" onClick={() => setEditing(null)} className="px-6 border border-border py-3 text-[11px] tracking-wide-2 uppercase hover:bg-muted">Cancel</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 border border-border py-3 text-[11px] tracking-wide-2 uppercase hover:bg-muted">Cancel</button>
               </div>
             </form>
           </div>

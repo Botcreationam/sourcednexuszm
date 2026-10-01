@@ -17,7 +17,7 @@ const STATUSES = [
 ];
 
 const emptyForm = {
-  name: "", price: "", category: "Dresses", description: "",
+  name: "", price: "", category: "", description: "",
   sizes: "", colors: "", status: "available",
   is_new_arrival: false, is_popular: false, delivery_info: "7–14 working days",
 };
@@ -65,14 +65,14 @@ export default function AdminProducts() {
 
   const openAdd = () => {
     setEditing(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm, category: catOptions.length > 0 ? catOptions[0] : "" });
     setImages([]);
     setModalOpen(true);
   };
   const openEdit = (p) => {
     setEditing(p);
     setForm({
-      name: p.name || "", price: p.price || "", category: p.category || "Dresses",
+      name: p.name || "", price: p.price || "", category: p.category || (catOptions.length > 0 ? catOptions[0] : ""),
       description: p.description || "", sizes: (p.sizes || []).join(", "), colors: (p.colors || []).join(", "),
       status: p.status || "available", is_new_arrival: !!p.is_new_arrival, is_popular: !!p.is_popular,
       delivery_info: p.delivery_info || "7–14 working days",
@@ -86,6 +86,20 @@ export default function AdminProducts() {
   const onFiles = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
+    if (images.length + files.length > 10) {
+      alert("You can upload a maximum of 10 images.");
+      return;
+    }
+    for (const f of files) {
+      if (f.size > 5 * 1024 * 1024) {
+        alert(`File ${f.name} exceeds the 5MB size limit.`);
+        return;
+      }
+      if (!f.type.startsWith("image/")) {
+        alert(`File ${f.name} is not a valid image.`);
+        return;
+      }
+    }
     setUploading(true);
     try {
       let urls = [];
@@ -105,7 +119,32 @@ export default function AdminProducts() {
     }
   };
 
-  const removeImage = (i) => setImages((prev) => prev.filter((_, idx) => idx !== i));
+  const removeImage = (index) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const moveImage = (index, direction) => {
+    setImages((prev) => {
+      const next = [...prev];
+      if (direction === "left" && index > 0) {
+        [next[index - 1], next[index]] = [next[index], next[index - 1]];
+      } else if (direction === "right" && index < next.length - 1) {
+        [next[index + 1], next[index]] = [next[index], next[index + 1]];
+      }
+      return next;
+    });
+  };
+
+  const makePrimary = (index) => {
+    setImages((prev) => {
+      const next = [...prev];
+      const [item] = next.splice(index, 1);
+      next.unshift(item);
+      return next;
+    });
+  };
+
+
 
   const save = async (e) => {
     e.preventDefault();
@@ -194,17 +233,7 @@ export default function AdminProducts() {
     load();
   };
 
-  const catOptions = Array.from(new Set([
-    ...categories.map((c) => c.name),
-    "Electronics",
-    "Watches",
-    "Dresses",
-    "Suits",
-    "Shoes",
-    "Heels",
-    "Bags & Accessories",
-    "Perfumes",
-  ]));
+  const catOptions = Array.from(new Set(categories.map((c) => c.name)));
 
   return (
     <div className="p-6 md:p-10 max-w-6xl">
@@ -330,9 +359,18 @@ export default function AdminProducts() {
               <In label="Product Images">
                 <div className="flex flex-wrap gap-3">
                   {images.map((img, i) => (
-                    <div key={i} className="relative w-20 h-24 group">
-                      <img src={img} alt="" className="w-full h-full object-cover border border-border" />
-                      <button type="button" onClick={() => removeImage(i)} className="absolute -top-2 -right-2 w-5 h-5 bg-foreground text-background flex items-center justify-center text-xs"><X className="w-3 h-3" /></button>
+                    <div key={i} className="relative w-24 h-32 group border border-border bg-muted">
+                      <img src={img} alt="" className="w-full h-full object-cover" />
+                      {i === 0 && <div className="absolute top-1 left-1 bg-foreground text-background text-[9px] px-1.5 py-0.5 rounded tracking-widest uppercase shadow-md">Primary</div>}
+                      
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5">
+                        <button type="button" onClick={() => removeImage(i)} className="text-white text-[10px] tracking-wide-2 uppercase hover:underline">Remove</button>
+                        {i > 0 && <button type="button" onClick={() => makePrimary(i)} className="text-white text-[10px] tracking-wide-2 uppercase hover:underline">Make Primary</button>}
+                        <div className="flex gap-2 mt-1">
+                          {i > 0 && <button type="button" onClick={() => moveImage(i, "left")} className="text-white p-1 hover:bg-white/20 rounded">{"<"}</button>}
+                          {i < images.length - 1 && <button type="button" onClick={() => moveImage(i, "right")} className="text-white p-1 hover:bg-white/20 rounded">{">"}</button>}
+                        </div>
+                      </div>
                     </div>
                   ))}
                   <label className="w-20 h-24 border border-dashed border-border flex items-center justify-center cursor-pointer hover:border-foreground">

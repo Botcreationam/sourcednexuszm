@@ -11,6 +11,8 @@ import { toast } from "@/components/ui/use-toast";
 import ScrollReveal from "@/components/site/ScrollReveal";
 import ShareBar from "@/components/site/ShareBar";
 import BrandedLoader from "@/components/BrandedLoader";
+import ProductChat from "@/components/site/ProductChat";
+import ProductInteractions from "@/components/site/ProductInteractions";
 
 const STATUS_LABELS = { available: "Available", preorder: "Pre-Order", soldout: "Sold Out" };
 
@@ -20,6 +22,8 @@ export default function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [activeImg, setActiveImg] = useState(0);
   const [lightbox, setLightbox] = useState(false);
+  const [metrics, setMetrics] = useState({ view_count: 0, like_count: 0, review_count: 0, average_rating: 0 });
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   // Cart & Options State
   const [selectedSize, setSelectedSize] = useState(null);
@@ -45,6 +49,11 @@ export default function ProductDetail() {
           if (data && !error) {
             setProduct(data);
             recordProductView(data);
+            
+            // Fetch metrics
+            const { data: metricsData } = await supabase.from("product_metrics").select("*").eq("product_id", id).maybeSingle();
+            if (metricsData) setMetrics(metricsData);
+            
             setActiveImg(0);
             if (data.sizes?.length) setSelectedSize(data.sizes[0]);
             if (data.colors?.length) setSelectedColor(data.colors[0]);
@@ -238,6 +247,14 @@ export default function ProductDetail() {
               </div>
 
               <h1 className="font-display text-4xl md:text-5xl leading-tight mt-3">{product.name}</h1>
+              
+              {/* Metrics display */}
+              <div className="flex items-center gap-4 mt-2 text-xs uppercase tracking-wide-2 text-muted-foreground">
+                <span className="flex items-center gap-1.5"><Heart className="w-3.5 h-3.5" /> {metrics.like_count} Likes</span>
+                <span className="flex items-center gap-1.5"><ZoomIn className="w-3.5 h-3.5" /> {metrics.view_count} Views</span>
+                {metrics.review_count > 0 && <span>★ {metrics.average_rating} ({metrics.review_count} Reviews)</span>}
+              </div>
+
               <p className="text-2xl font-display mt-4 text-foreground">{formatKwachaPrice(product.price)}</p>
 
               <div className="flex items-center gap-3 mt-5">
@@ -367,13 +384,21 @@ export default function ProductDetail() {
                   </button>
                 </div>
 
-                {/* WhatsApp Button */}
                 <button
                   type="button"
                   onClick={handleDirectWhatsApp}
                   className="w-full bg-[#1f7a4c] hover:bg-[#165c39] text-white py-3.5 text-[11px] tracking-wide-2 uppercase font-medium transition-colors flex items-center justify-center gap-2"
                 >
                   <MessageCircle className="w-4 h-4" /> Inquire via WhatsApp
+                </button>
+
+                {/* New Direct Messaging Chat Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsChatOpen(true)}
+                  className="w-full border border-blue-500/50 hover:bg-blue-500/10 text-blue-400 py-3.5 text-[11px] tracking-wide-2 uppercase font-medium transition-colors flex items-center justify-center gap-2 mt-2"
+                >
+                  <MessageCircle className="w-4 h-4" /> Chat with Us
                 </button>
 
                 <p className="text-center text-[10px] tracking-wide-2 uppercase text-muted-foreground mt-2">
@@ -384,6 +409,8 @@ export default function ProductDetail() {
               <div className="mt-8">
                 <ShareBar product={product} />
               </div>
+              
+              <ProductInteractions productId={product.id} />
             </ScrollReveal>
           </div>
         </div>
@@ -396,6 +423,9 @@ export default function ProductDetail() {
           <img src={images[activeImg]} alt={product.name} className="max-h-[90vh] max-w-[90vw] object-contain" />
         </div>
       )}
+      
+      {/* Product Chat */}
+      <ProductChat product={product} open={isChatOpen} onClose={() => setIsChatOpen(false)} />
     </div>
   );
 }

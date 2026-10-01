@@ -1,3 +1,5 @@
+import { supabase } from "@/lib/supabase";
+
 /**
  * Sourced Nexus — TikTok FYP-Inspired Personalized Recommendation Engine
  * 
@@ -133,6 +135,21 @@ export function recordProductView(product) {
     localStorage.setItem(STORAGE_KEYS.CATEGORY_AFFINITY, JSON.stringify(aff));
 
     window.dispatchEvent(new CustomEvent("sn:activity_updated"));
+
+    // Async sync to Supabase for real view counts (anonymous or auth'd)
+    const sessionId = localStorage.getItem("sn_session_id") || (() => {
+      const sid = Math.random().toString(36).substring(2, 15);
+      localStorage.setItem("sn_session_id", sid);
+      return sid;
+    })();
+    
+    supabase.auth.getSession().then(({ data }) => {
+      supabase.from("product_views").insert({
+        product_id: id,
+        session_id: sessionId,
+        user_id: data?.session?.user?.id || null
+      }).then(() => {}).catch(() => {});
+    });
   } catch {}
 }
 
@@ -167,6 +184,18 @@ export function toggleProductLike(productId) {
     }
     localStorage.setItem(STORAGE_KEYS.LIKES, JSON.stringify(likes.slice(0, 100)));
     window.dispatchEvent(new CustomEvent("sn:likes_updated", { detail: { likes } }));
+    
+    // Async sync to Supabase for authenticated users
+    supabase.auth.getSession().then(({ data }) => {
+      if (data?.session?.user) {
+        if (!exists) {
+          supabase.from("product_likes").insert({ product_id: productId, user_id: data.session.user.id }).then(()=>{});
+        } else {
+          supabase.from("product_likes").delete().match({ product_id: productId, user_id: data.session.user.id }).then(()=>{});
+        }
+      }
+    });
+
     return !exists;
   } catch {
     return false;

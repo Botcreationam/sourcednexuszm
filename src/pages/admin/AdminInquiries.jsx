@@ -16,8 +16,8 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import AdminChatModal from "./AdminChatModal";
 
 const STATUSES = ["Pending", "Reviewing", "Quoted", "Confirmed", "Completed", "Cancelled"];
 
@@ -37,6 +37,7 @@ export default function AdminInquiries() {
   const [selected, setSelected] = useState(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [lightboxImg, setLightboxImg] = useState(null);
+  const [chatInquiry, setChatInquiry] = useState(null);
 
   const fetchInquiries = async () => {
     setLoading(true);
@@ -313,6 +314,12 @@ export default function AdminInquiries() {
                     ) : (
                       <span className="text-muted-foreground mt-0.5 block">—</span>
                     )}
+                    <button
+                      onClick={() => setChatInquiry(inq)}
+                      className="inline-flex items-center gap-1.5 text-[10px] tracking-wide-2 uppercase bg-blue-500/20 hover:bg-blue-500/40 text-blue-400 px-3 py-1.5 mt-2 transition-colors w-max"
+                    >
+                      <MessageSquareQuote className="w-3.5 h-3.5" /> Platform Chat
+                    </button>
                   </div>
                 </div>
 
@@ -451,6 +458,9 @@ export default function AdminInquiries() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Internal Chat Modal */}
+      <AdminChatModal inquiry={chatInquiry} open={!!chatInquiry} onClose={() => setChatInquiry(null)} />
     </div>
   );
 }
