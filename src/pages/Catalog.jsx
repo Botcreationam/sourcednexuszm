@@ -43,15 +43,22 @@ export default function Catalog() {
             getSupabaseProducts(),
             supabase.from("categories").select("name").order("display_order", { ascending: true })
           ]);
+          
           if (sp && sp.length > 0) {
             setProducts(sp);
+          } else {
+            // Fallback to base44 if Supabase has no products yet
+            const bProducts = await base44.entities.Product.list("-created_date", 200);
+            setProducts(bProducts || []);
           }
+          
           if (sc.data && sc.data.length > 0) {
             setCategories(["All", ...sc.data.map(c => c.name)]);
           }
           setLoading(false);
           return;
         }
+        
         const bProducts = await base44.entities.Product.list("-created_date", 200);
         setProducts(bProducts || []);
       } catch (err) {
