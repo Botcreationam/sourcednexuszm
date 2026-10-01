@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Check, Sparkles, X, RotateCcw } from "lucide-react";
+import { Check, X, RotateCcw } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { supabase } from "@/lib/supabase";
 import {
@@ -68,9 +68,8 @@ export default function OnboardingModal({ open, onClose, isEditMode = false }) {
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl bg-card border-border p-6 md:p-8 max-h-[90vh] overflow-y-auto">
         <DialogHeader className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center gap-2 mx-auto px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-foreground text-xs uppercase tracking-wide-2">
-            <Sparkles className="w-3.5 h-3.5 text-primary" />
-            <span>Personalized For You</span>
+          <div className="text-primary text-xs uppercase tracking-wide-2 font-medium">
+            Personalized For You
           </div>
           <DialogTitle className="font-display text-2xl md:text-3xl tracking-tight">
             {isEditMode ? "Update Your Shopping Interests" : "Welcome to Sourced Nexus"}
