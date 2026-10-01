@@ -291,22 +291,22 @@ export default function Home() {
       )}
 
       {/* PRE-ORDER CTA */}
-      <section className="relative py-24 md:py-32 bg-foreground text-cream overflow-hidden">
+      <section className="relative py-24 md:py-32 bg-zinc-950 text-zinc-50 overflow-hidden">
         <div className="mx-auto max-w-3xl px-5 md:px-8 text-center">
           <ScrollReveal>
-            <p className="text-[11px] tracking-luxe uppercase text-cream/60">Now Taking Pre-Orders</p>
+            <p className="text-[11px] tracking-luxe uppercase text-zinc-50/60">Now Taking Pre-Orders</p>
             <h2 className="font-display text-4xl md:text-6xl mt-4 leading-tight">Seen the perfect outfit?<br />Just send us a photo!</h2>
-            <p className="mt-6 text-cream/70 font-light max-w-lg mx-auto">
+            <p className="mt-6 text-zinc-50/70 font-light max-w-lg mx-auto">
               Can't find it in our catalog? No problem. Send us an image of the outfit you want sourced and we'll handle the rest.
             </p>
             <div className="mt-9 flex flex-col sm:flex-row gap-3 justify-center">
               <button
                 onClick={() => setPhotoModalOpen(true)}
-                className="bg-cream text-foreground px-8 py-4 text-[11px] tracking-wide-2 uppercase hover:bg-cream/85 transition-colors"
+                className="bg-zinc-50 text-zinc-950 px-8 py-4 text-[11px] tracking-wide-2 uppercase hover:bg-zinc-50/85 transition-colors"
               >
                 Send Us a Photo
               </button>
-              <a href={buildWhatsAppUrl(photoSourcingMessage())} target="_blank" rel="noopener noreferrer" className="border border-cream/40 px-8 py-4 text-[11px] tracking-wide-2 uppercase hover:bg-cream hover:text-foreground transition-colors">
+              <a href={buildWhatsAppUrl(photoSourcingMessage())} target="_blank" rel="noopener noreferrer" className="border border-zinc-50/40 px-8 py-4 text-[11px] tracking-wide-2 uppercase hover:bg-zinc-50 hover:text-zinc-950 transition-colors">
                 WhatsApp / Call: {WHATSAPP_DISPLAY}
               </a>
             </div>
