@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import PreferencesModal from "./PreferencesModal";
 import OnboardingModal from "./OnboardingModal";
 import SignOutModal from "./SignOutModal";
+import NotificationsDrawer from "./NotificationsDrawer";
 import { ModeToggle } from "@/components/ModeToggle";
 
 const LINKS = [
@@ -26,6 +27,7 @@ export default function Navbar() {
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [interestsOpen, setInterestsOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const location = useLocation();
 
@@ -216,7 +218,7 @@ export default function Navbar() {
               {isAuthenticated && (
                 <button
                   type="button"
-                  onClick={() => handleNav("/messages")}
+                  onClick={() => setNotificationsOpen(true)}
                   className="relative p-2 text-foreground/80 hover:text-foreground"
                 >
                   <Bell className="w-5 h-5" />
@@ -379,6 +381,10 @@ export default function Navbar() {
       <SignOutModal
         open={signOutOpen}
         onClose={() => setSignOutOpen(false)}
+      />
+      <NotificationsDrawer 
+        open={notificationsOpen}
+        onClose={() => setNotificationsOpen(false)}
       />
     </>
   );

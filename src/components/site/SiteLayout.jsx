@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import Navbar from "./Navbar";
@@ -14,6 +14,8 @@ export default function SiteLayout() {
   const { user, isAuthenticated } = useAuth();
   const { isInquiryModalOpen, closeInquiryModal, inquiryItems } = useCart();
   const [showFirstTimeOnboarding, setShowFirstTimeOnboarding] = useState(false);
+  const location = useLocation();
+  const hideFooter = location.pathname.startsWith("/messages");
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -31,7 +33,7 @@ export default function SiteLayout() {
       <main className="flex-1 pb-16 lg:pb-0">
         <Outlet />
       </main>
-      <Footer />
+      {!hideFooter && <Footer />}
       <WhatsAppFloat />
 
       {/* Cart, Wishlist, and Inquiry Slide-Overs */}
