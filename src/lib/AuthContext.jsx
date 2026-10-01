@@ -217,6 +217,34 @@ export const AuthProvider = ({ children }) => {
   };
 
   /**
+  /**
+   * Sign in with Google via Supabase OAuth
+   */
+  const loginWithGoogle = async (returnTo = '/') => {
+    setAuthError(null);
+    if (isSupabaseConfigured && supabase) {
+      const redirectOrigin = window.location.origin;
+      const cleanReturnTo = returnTo.startsWith('/') ? returnTo : `/${returnTo}`;
+      const redirectTo = `${redirectOrigin}${cleanReturnTo === '/' ? '' : cleanReturnTo}`;
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'select_account',
+          },
+        },
+      });
+      if (error) throw error;
+      return data;
+    } else {
+      throw new Error('Supabase is not configured for Google authentication.');
+    }
+  };
+
+  /**
    * Update user password
    */
   const updatePassword = async (newPassword) => {
@@ -243,6 +271,7 @@ export const AuthProvider = ({ children }) => {
       authChecked,
       appPublicSettings,
       login,
+      loginWithGoogle,
       register,
       logout,
       resetPassword,
