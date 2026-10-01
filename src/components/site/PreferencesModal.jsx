@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Sliders, RotateCcw, Sparkles, ExternalLink, CheckCircle2 } from "lucide-react";
+import { Sliders, RotateCcw, ExternalLink, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { supabase } from "@/lib/supabase";
 import {
@@ -94,7 +94,7 @@ export default function PreferencesModal({ open, onClose, onOpenInterests }) {
                 }}
                 className="text-xs uppercase tracking-wide-2 h-8"
               >
-                <Sparkles className="w-3.5 h-3.5 mr-1 text-primary" /> Edit
+                Edit
               </Button>
             </div>
             {interests.length > 0 && (
