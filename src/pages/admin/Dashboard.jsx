@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Tags, ClipboardList, Package, Clock } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 export default function Dashboard() {
   const [products, setProducts] = useState([]);
@@ -10,13 +11,35 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      base44.entities.Product.list("-created_date", 200),
-      base44.entities.Preorder.list("-created_date", 200),
-      base44.entities.Category.list("-created_date", 50),
-    ]).then(([p, po, c]) => {
-      setProducts(p); setPreorders(po); setCategories(c);
-    }).finally(() => setLoading(false));
+    async function loadStats() {
+      try {
+        if (isSupabaseConfigured && supabase) {
+          const [p, po, c] = await Promise.all([
+            supabase.from("products").select("*").order("created_at", { ascending: false }).limit(200),
+            supabase.from("preorders").select("*").limit(200),
+            supabase.from("categories").select("*").limit(100),
+          ]);
+          setProducts(p.data || []);
+          setPreorders(po.data || []);
+          setCategories(c.data || []);
+          return;
+        }
+
+        const [p, po, c] = await Promise.all([
+          base44.entities.Product.list("-created_date", 200),
+          base44.entities.Preorder.list("-created_date", 200),
+          base44.entities.Category.list("-created_date", 50),
+        ]);
+        setProducts(p || []);
+        setPreorders(po || []);
+        setCategories(c || []);
+      } catch (err) {
+        console.error("Dashboard load error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadStats();
   }, []);
 
   const byCategory = {};

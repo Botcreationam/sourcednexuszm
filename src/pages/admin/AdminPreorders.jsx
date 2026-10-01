@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { X, Image as ImageIcon, Trash2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { isSupabaseConfigured, supabase, getSecurePreorderImageUrl } from "@/lib/supabase";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -24,15 +25,56 @@ export default function AdminPreorders() {
   const [selected, setSelected] = useState(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
-  const load = () => {
+  const load = async () => {
     setLoading(true);
-    base44.entities.Preorder.list("-created_date", 200).then(setOrders).finally(() => setLoading(false));
+    try {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase
+          .from("preorders")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(200);
+
+        if (error) throw error;
+
+        const resolved = await Promise.all(
+          (data || []).map(async (item) => {
+            if (item.requested_image) {
+              const signed = await getSecurePreorderImageUrl(item.requested_image, 3600);
+              return { ...item, preview_url: signed };
+            }
+            return item;
+          })
+        );
+        setOrders(resolved);
+        return;
+      }
+
+      const res = await base44.entities.Preorder.list("-created_date", 200);
+      setOrders((res || []).map((o) => ({ ...o, preview_url: o.requested_image })));
+    } catch (err) {
+      console.error("Failed to load preorders:", err);
+    } finally {
+      setLoading(false);
+    }
   };
-  useEffect(load, []);
+
+  useEffect(() => {
+    load();
+  }, []);
 
   const setStatus = async (o, status) => {
-    await base44.entities.Preorder.update(o.id, { status });
-    setOrders((prev) => prev.map((p) => (p.id === o.id ? { ...p, status } : p)));
+    try {
+      if (isSupabaseConfigured && supabase) {
+        const { error } = await supabase.from("preorders").update({ status }).eq("id", o.id);
+        if (error) throw error;
+      } else {
+        await base44.entities.Preorder.update(o.id, { status });
+      }
+      setOrders((prev) => prev.map((p) => (p.id === o.id ? { ...p, status } : p)));
+    } catch (err) {
+      console.error("Failed to update status:", err);
+    }
   };
 
   const toggleSelect = (id) => setSelected((prev) => {
@@ -42,11 +84,21 @@ export default function AdminPreorders() {
   });
   const allSelected = orders.length > 0 && selected.size === orders.length;
   const toggleSelectAll = () => setSelected(allSelected ? new Set() : new Set(orders.map((o) => o.id)));
+
   const confirmBulkDelete = async () => {
-    await base44.entities.Preorder.deleteMany({ id: { $in: Array.from(selected) } });
-    setSelected(new Set());
-    setBulkDeleteOpen(false);
-    load();
+    try {
+      if (isSupabaseConfigured && supabase) {
+        const { error } = await supabase.from("preorders").delete().in("id", Array.from(selected));
+        if (error) throw error;
+      } else {
+        await base44.entities.Preorder.deleteMany({ id: { $in: Array.from(selected) } });
+      }
+      setSelected(new Set());
+      setBulkDeleteOpen(false);
+      load();
+    } catch (err) {
+      console.error("Failed to delete orders:", err);
+    }
   };
 
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—";
@@ -87,9 +139,9 @@ export default function AdminPreorders() {
                   <input type="checkbox" checked={selected.has(o.id)} onChange={() => toggleSelect(o.id)} className="accent-foreground w-4 h-4" />
                 </div>
                 <div className="w-full md:w-24 h-28 md:h-28 bg-muted overflow-hidden flex-shrink-0 flex items-center justify-center">
-                  {o.requested_image ? (
-                    <button onClick={() => setViewImg(o.requested_image)} className="w-full h-full">
-                      <img src={o.requested_image} alt="" className="w-full h-full object-cover" />
+                  {(o.preview_url || o.requested_image) ? (
+                    <button onClick={() => setViewImg(o.preview_url || o.requested_image)} className="w-full h-full">
+                      <img src={o.preview_url || o.requested_image} alt="" className="w-full h-full object-cover" />
                     </button>
                   ) : (
                     <ImageIcon className="w-6 h-6 text-muted-foreground" strokeWidth={1} />
@@ -97,7 +149,7 @@ export default function AdminPreorders() {
                 </div>
                 <div className="flex-1 min-w-0 grid sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
                   <div><span className="text-[10px] tracking-wide-2 uppercase text-muted-foreground">Name</span><p className="font-display text-lg">{o.customer_name}</p></div>
-                  <div><span className="text-[10px] tracking-wide-2 uppercase text-muted-foreground">Date</span><p>{fmtDate(o.created_date)}</p></div>
+                  <div><span className="text-[10px] tracking-wide-2 uppercase text-muted-foreground">Date</span><p>{fmtDate(o.created_date || o.created_at)}</p></div>
                   <div><span className="text-[10px] tracking-wide-2 uppercase text-muted-foreground">Phone</span><p>{o.phone || "—"}</p></div>
                   <div><span className="text-[10px] tracking-wide-2 uppercase text-muted-foreground">WhatsApp</span><p>{o.whatsapp || "—"}</p></div>
                   <div><span className="text-[10px] tracking-wide-2 uppercase text-muted-foreground">Category / Size / Color</span><p>{[o.category, o.size, o.color].filter(Boolean).join(" • ") || "—"}</p></div>

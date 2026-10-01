@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Truck, ChevronLeft, X, ZoomIn } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { buildWhatsAppUrl, productInquiryMessage, WHATSAPP_DISPLAY } from "@/lib/whatsapp";
 import ScrollReveal from "@/components/site/ScrollReveal";
 import ShareBar from "@/components/site/ShareBar";
@@ -18,9 +19,27 @@ export default function ProductDetail() {
 
   useEffect(() => {
     setLoading(true);
-    base44.entities.Product.get(id)
-      .then((p) => { setProduct(p); setActiveImg(0); })
-      .finally(() => setLoading(false));
+    async function loadProduct() {
+      try {
+        if (isSupabaseConfigured && supabase) {
+          const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
+          if (data && !error) {
+            setProduct(data);
+            setActiveImg(0);
+            setLoading(false);
+            return;
+          }
+        }
+        const bProduct = await base44.entities.Product.get(id);
+        setProduct(bProduct);
+        setActiveImg(0);
+      } catch (err) {
+        console.error("Failed to load product details:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadProduct();
   }, [id]);
 
   // Dynamically update social preview meta tags for this product

@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { isSupabaseConfigured, getSupabaseProducts } from "@/lib/supabase";
 import ProductCard from "@/components/site/ProductCard";
 import ScrollReveal from "@/components/site/ScrollReveal";
 import BrandedLoader from "@/components/BrandedLoader";
@@ -34,9 +35,25 @@ export default function Catalog() {
   const sort = params.get("sort") || "newest";
 
   useEffect(() => {
-    base44.entities.Product.list("-created_date", 200)
-      .then(setProducts)
-      .finally(() => setLoading(false));
+    async function loadProducts() {
+      try {
+        if (isSupabaseConfigured) {
+          const sp = await getSupabaseProducts();
+          if (sp && sp.length > 0) {
+            setProducts(sp);
+            setLoading(false);
+            return;
+          }
+        }
+        const bProducts = await base44.entities.Product.list("-created_date", 200);
+        setProducts(bProducts || []);
+      } catch (err) {
+        console.error("Failed to load products:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadProducts();
   }, []);
 
   const setCategory = (c) => {

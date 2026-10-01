@@ -7,6 +7,7 @@ import ScrollReveal from "@/components/site/ScrollReveal";
 import HorizontalProductSection from "@/components/site/HorizontalProductSection";
 import SectionHeading from "@/components/site/SectionHeading";
 import BrandedLoader from "@/components/BrandedLoader";
+import PhotoChoiceModal from "@/components/site/PhotoChoiceModal";
 
 const HERO_IMAGES = [
   "https://media.base44.com/images/public/6abc6a8a4b6c9d175aa35566/d51d95ee0_IMG_7842.jpeg",
@@ -27,6 +28,7 @@ const CATEGORIES = [
 export default function Home() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
 
   useEffect(() => {
     base44.entities.Product.list("-created_date", 100)
@@ -80,9 +82,12 @@ export default function Home() {
               <Link to="/catalog" className="group inline-flex items-center justify-center gap-2 bg-foreground text-background px-8 py-4 text-[11px] tracking-wide-2 uppercase hover:bg-foreground/85 transition-colors">
                 Browse Catalog <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
-              <a href={buildWhatsAppUrl(photoSourcingMessage())} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 border border-foreground/40 px-8 py-4 text-[11px] tracking-wide-2 uppercase hover:bg-foreground hover:text-background transition-colors">
+              <button
+                onClick={() => setPhotoModalOpen(true)}
+                className="inline-flex items-center justify-center gap-2 border border-foreground/40 px-8 py-4 text-[11px] tracking-wide-2 uppercase hover:bg-foreground hover:text-background transition-colors"
+              >
                 <Camera className="w-4 h-4" /> Send Us a Photo
-              </a>
+              </button>
             </div>
           </ScrollReveal>
         </div>
@@ -201,9 +206,12 @@ export default function Home() {
               Can't find it in our catalog? No problem. Send us an image of the outfit you want sourced and we'll handle the rest.
             </p>
             <div className="mt-9 flex flex-col sm:flex-row gap-3 justify-center">
-              <Link to="/pre-order" className="bg-cream text-foreground px-8 py-4 text-[11px] tracking-wide-2 uppercase hover:bg-cream/85 transition-colors">
-                Request This Item
-              </Link>
+              <button
+                onClick={() => setPhotoModalOpen(true)}
+                className="bg-cream text-foreground px-8 py-4 text-[11px] tracking-wide-2 uppercase hover:bg-cream/85 transition-colors"
+              >
+                Send Us a Photo
+              </button>
               <a href={buildWhatsAppUrl(photoSourcingMessage())} target="_blank" rel="noopener noreferrer" className="border border-cream/40 px-8 py-4 text-[11px] tracking-wide-2 uppercase hover:bg-cream hover:text-foreground transition-colors">
                 WhatsApp / Call: {WHATSAPP_DISPLAY}
               </a>
@@ -211,6 +219,9 @@ export default function Home() {
           </ScrollReveal>
         </div>
       </section>
+
+      {/* Choice Modal for Photo Sourcing */}
+      <PhotoChoiceModal open={photoModalOpen} onClose={() => setPhotoModalOpen(false)} />
     </div>
   );
 }

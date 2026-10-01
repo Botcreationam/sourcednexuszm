@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogOut } from "lucide-react";
+import { useAuth } from "@/lib/AuthContext";
 
 const LINKS = [
   { label: "Home", to: "/" },
@@ -12,6 +13,7 @@ const LINKS = [
 ];
 
 export default function Navbar() {
+  const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const location = useLocation();
@@ -70,12 +72,36 @@ export default function Navbar() {
                 {l.label}
               </button>
             ))}
-            <Link
-              to="/login?returnTo=/admin"
-              className="text-[11px] tracking-wide-2 uppercase border border-foreground/30 px-4 py-2 hover:bg-foreground hover:text-background transition-colors"
-            >
-              Admin Login
-            </Link>
+
+            {isAuthenticated ? (
+              <div className="flex items-center gap-3">
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    className="text-[10px] tracking-wide-2 uppercase bg-foreground text-background px-3 py-1.5 hover:opacity-85 transition-opacity"
+                  >
+                    Admin Panel
+                  </Link>
+                )}
+                <span className="text-[10px] tracking-wide-2 uppercase text-muted-foreground truncate max-w-[130px]" title={user?.email}>
+                  {user?.user_metadata?.full_name || user?.email?.split('@')[0]}
+                </span>
+                <button
+                  onClick={() => logout(true)}
+                  title="Sign Out"
+                  className="text-muted-foreground hover:text-foreground p-1 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                className="text-[11px] tracking-wide-2 uppercase border border-foreground/30 px-4 py-2 hover:bg-foreground hover:text-background transition-colors"
+              >
+                Sign In
+              </Link>
+            )}
           </div>
 
           <button
@@ -104,9 +130,28 @@ export default function Navbar() {
               {l.label}
             </button>
           ))}
-          <Link to="/login?returnTo=/admin" onClick={() => setOpen(false)} className="mt-3 text-center py-3 text-xs tracking-wide-2 uppercase border border-foreground/30">
-            Admin Login
-          </Link>
+          {isAuthenticated ? (
+            <div className="pt-3 mt-2 border-t border-border flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-wide-2 text-foreground truncate">{user?.email}</p>
+                {isAdmin && (
+                  <Link to="/admin" onClick={() => setOpen(false)} className="text-[10px] tracking-wide-2 uppercase text-[#C5A059] underline mt-0.5 inline-block">
+                    Admin Panel →
+                  </Link>
+                )}
+              </div>
+              <button
+                onClick={() => { logout(true); setOpen(false); }}
+                className="text-xs uppercase tracking-wide-2 text-muted-foreground hover:text-foreground"
+              >
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <Link to="/login" onClick={() => setOpen(false)} className="mt-3 text-center py-3 text-xs tracking-wide-2 uppercase border border-foreground/30">
+              Sign In
+            </Link>
+          )}
         </div>
       </div>
     </header>

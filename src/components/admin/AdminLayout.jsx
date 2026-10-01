@@ -14,7 +14,7 @@ const NAV = [
 import BrandedLoader from "@/components/BrandedLoader";
 
 export default function AdminLayout() {
-  const { user, isAuthenticated, isLoadingAuth, logout } = useAuth();
+  const { user, isAuthenticated, isAdmin, isLoadingAuth, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -22,24 +22,24 @@ export default function AdminLayout() {
   useEffect(() => { setOpen(false); }, [location.pathname]);
 
   if (isLoadingAuth) {
-    return <BrandedLoader text="Accessing Portal..." />;
+    return <BrandedLoader text="Verifying Portal Privileges..." />;
   }
   if (!isAuthenticated) {
-    return <Navigate to="/login?returnTo=/admin" replace />;
+    return <Navigate to="/system-admin-portal" replace />;
   }
-  if (user && (user.role !== "admin" || user.email !== ADMIN_EMAIL)) {
+  if (!isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center px-6 text-center">
         <div>
           <h1 className="font-display text-4xl">Access Denied</h1>
-          <p className="mt-3 text-sm text-muted-foreground">You don't have administrator access to this area.</p>
+          <p className="mt-3 text-sm text-muted-foreground">You do not have verified administrator privileges for this portal.</p>
           <Link to="/" className="mt-6 inline-block text-[11px] tracking-wide-2 uppercase border-b border-foreground pb-0.5">Back to Site</Link>
         </div>
       </div>
     );
   }
 
-  const doLogout = () => { logout(false); navigate("/login"); };
+  const doLogout = () => { logout(false); navigate("/system-admin-portal"); };
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">

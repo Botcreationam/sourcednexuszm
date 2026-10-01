@@ -1,89 +1,44 @@
-import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import React, { useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LogIn, Mail, Lock, Loader2, ShieldAlert } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
-import { ADMIN_EMAIL } from "@/lib/adminAccess";
-
-const MAX_ATTEMPTS = 5;
-// Escalating lockout (seconds): 30s, 1m, 2m, 5m, 15m
-const LOCKOUT_STEPS = [30, 60, 120, 300, 900];
-const LOCK_KEY = "admin_login_lock";
-
-function readLock() {
-  try {
-    const raw = localStorage.getItem(LOCK_KEY);
-    return raw ? JSON.parse(raw) : { attempts: 0, lockoutCount: 0, lockoutUntil: 0 };
-  } catch {
-    return { attempts: 0, lockoutCount: 0, lockoutUntil: 0 };
-  }
-}
-function writeLock(s) {
-  localStorage.setItem(LOCK_KEY, JSON.stringify(s));
-}
 
 export default function Login() {
-  const [email, setEmail] = useState(ADMIN_EMAIL);
+  const { login, isAdmin } = useAuth();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const returnTo = params.get("returnTo") || "/";
+
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [lock, setLock] = useState(readLock);
-  const [now, setNow] = useState(Date.now());
-
-  const returnTo = (() => {
-    try {
-      const p = new URLSearchParams(window.location.search).get("returnTo");
-      return p && p.startsWith("/") ? p : "/admin";
-    } catch {
-      return "/admin";
-    }
-  })();
-
-  // Tick every second so the lockout countdown updates live
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  const lockedUntil = lock.lockoutUntil || 0;
-  const isLocked = now < lockedUntil;
-  const remaining = isLocked ? Math.ceil((lockedUntil - now) / 1000) : 0;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (isLocked) return;
 
-    // Restrict to the single authorized administrator email
-    if (email.trim().toLowerCase() !== ADMIN_EMAIL) {
-      setError("Access denied. This portal is restricted to the authorized administrator.");
+    if (!email.trim() || !password) {
+      setError("Please fill in both email and password.");
       return;
     }
 
     setLoading(true);
     try {
-      await base44.auth.loginViaEmailPassword(email.trim(), password);
-      writeLock({ attempts: 0, lockoutCount: 0, lockoutUntil: 0 });
-      window.location.href = returnTo;
-    } catch (err) {
-      const cur = readLock();
-      const attempts = cur.attempts + 1;
-      let lockoutCount = cur.lockoutCount;
-      let lockoutUntil = 0;
-      if (attempts >= MAX_ATTEMPTS) {
-        const step = LOCKOUT_STEPS[Math.min(lockoutCount, LOCKOUT_STEPS.length - 1)];
-        lockoutUntil = Date.now() + step * 1000;
-        lockoutCount += 1;
-        writeLock({ attempts: 0, lockoutCount, lockoutUntil });
+      await login(email.trim(), password);
+      // If logging in with returnTo, go there; otherwise if admin, go to /admin else /
+      if (returnTo && returnTo !== "/") {
+        navigate(returnTo, { replace: true });
       } else {
-        writeLock({ attempts, lockoutCount, lockoutUntil });
+        navigate("/", { replace: true });
       }
-      setLock(readLock());
-      setNow(Date.now());
-      setError(err.message || "Invalid email or password");
+    } catch (err) {
+      const msg = err?.message || "Invalid email or password.";
+      setError(msg.includes("Invalid login") ? "Invalid email or password. Please try again." : msg);
     } finally {
       setLoading(false);
     }
@@ -92,24 +47,28 @@ export default function Login() {
   return (
     <AuthLayout
       icon={LogIn}
-      title="Admin Sign In"
-      subtitle="Authorized personnel only"
+      title="Welcome Back"
+      subtitle="Sign in to your Sourced Nexus account"
       footer={
-        <Link to="/" className="text-primary font-medium hover:underline">
-          Back to store
-        </Link>
+        <div className="space-y-2 text-center text-sm">
+          <div>
+            Don't have an account?{" "}
+            <Link to={`/register${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`} className="text-primary font-medium hover:underline">
+              Create account
+            </Link>
+          </div>
+          <div>
+            <Link to="/" className="text-xs text-muted-foreground hover:text-foreground">
+              ← Continue browsing without logging in
+            </Link>
+          </div>
+        </div>
       }
     >
       {error && (
         <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm flex items-start gap-2">
           <ShieldAlert className="w-4 h-4 mt-0.5 flex-shrink-0" />
           <span>{error}</span>
-        </div>
-      )}
-
-      {isLocked && (
-        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-          Too many failed attempts. Please try again in {remaining}s.
         </div>
       )}
 
@@ -131,6 +90,7 @@ export default function Login() {
             />
           </div>
         </div>
+
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="password">Password</Label>
@@ -149,18 +109,18 @@ export default function Login() {
               onChange={(e) => setPassword(e.target.value)}
               className="pl-10 h-12"
               required
-              disabled={isLocked}
             />
           </div>
         </div>
-        <Button type="submit" className="w-full h-12 font-medium" disabled={loading || isLocked}>
+
+        <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Logging in...
+              Signing in...
             </>
           ) : (
-            "Log in"
+            "Sign In"
           )}
         </Button>
       </form>

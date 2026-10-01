@@ -288,3 +288,11 @@ values
         false,
         '7–14 working days'
     );
+
+-- Admin user initialization
+insert into public.admin_users (id, email, role)
+select id, email, 'admin'
+from auth.users
+where email = 'frankmwalu04@gmail.com'
+on conflict (id) do update set role = 'admin', email = excluded.email;
+

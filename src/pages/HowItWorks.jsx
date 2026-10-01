@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { 
   Camera, MessageSquare, Truck, ShieldCheck, CheckCircle2, 
@@ -7,6 +7,7 @@ import {
 import { buildWhatsAppUrl, photoSourcingMessage, WHATSAPP_DISPLAY } from "@/lib/whatsapp";
 import ScrollReveal from "@/components/site/ScrollReveal";
 import SectionHeading from "@/components/site/SectionHeading";
+import PhotoChoiceModal from "@/components/site/PhotoChoiceModal";
 
 const STEPS = [
   {
@@ -82,6 +83,8 @@ const FAQS = [
 ];
 
 export default function HowItWorks() {
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
+
   return (
     <div className="pt-20">
       {/* Hero */}
@@ -98,14 +101,12 @@ export default function HowItWorks() {
               From high-end fashion and statement footwear to flagship electronics and luxury timepieces — if it exists anywhere in the world, we bring it to Lusaka.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-              <a
-                href={buildWhatsAppUrl(photoSourcingMessage())}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => setPhotoModalOpen(true)}
                 className="inline-flex items-center justify-center gap-2 bg-foreground text-background px-8 py-4 text-[11px] tracking-wide-2 uppercase hover:bg-foreground/85 transition-colors"
               >
                 <Camera className="w-4 h-4" /> Send Us What You Want
-              </a>
+              </button>
               <Link
                 to="/pre-order"
                 className="inline-flex items-center justify-center gap-2 border border-foreground/30 px-8 py-4 text-[11px] tracking-wide-2 uppercase hover:bg-foreground hover:text-background transition-colors"
@@ -214,6 +215,12 @@ export default function HowItWorks() {
               Send us a photo or link directly on WhatsApp or submit a request online.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={() => setPhotoModalOpen(true)}
+                className="bg-background text-foreground px-8 py-4 text-[11px] tracking-wide-2 uppercase hover:opacity-90 transition-opacity"
+              >
+                Send Us a Photo
+              </button>
               <a
                 href={buildWhatsAppUrl(photoSourcingMessage())}
                 target="_blank"
@@ -232,6 +239,8 @@ export default function HowItWorks() {
           </ScrollReveal>
         </div>
       </section>
+
+      <PhotoChoiceModal open={photoModalOpen} onClose={() => setPhotoModalOpen(false)} />
     </div>
   );
 }

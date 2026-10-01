@@ -27,37 +27,29 @@ import Dashboard from './pages/admin/Dashboard';
 import AdminProducts from './pages/admin/AdminProducts';
 import AdminCategories from './pages/admin/AdminCategories';
 import AdminPreorders from './pages/admin/AdminPreorders';
-// Add page imports here
+import AdminPortalLogin from './pages/AdminPortalLogin';
 
 import BrandedLoader from '@/components/BrandedLoader';
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingAuth, authChecked } = useAuth();
 
-  // Show luxury branded loader while checking app public settings or auth
-  if (isLoadingPublicSettings || isLoadingAuth) {
+  // Show luxury branded loader while initial auth state resolves on boot
+  if (isLoadingAuth && !authChecked) {
     return <BrandedLoader text="Loading Sourced Nexus..." />;
   }
 
-  // Handle authentication errors
-  if (authError) {
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    } else if (authError.type === 'auth_required') {
-      // Redirect to login automatically
-      navigateToLogin();
-      return null;
-    }
-  }
-
-  // Render the main app
+  // Render the main app — visitors browse freely without being forced to authenticate
   return (
     <Routes>
-      {/* Auth */}
+      {/* Customer Auth */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+
+      {/* Secure Non-Public Admin Portal Entry */}
+      <Route path="/system-admin-portal" element={<AdminPortalLogin />} />
 
       {/* Customer storefront */}
       <Route element={<SiteLayout />}>
