@@ -145,10 +145,16 @@ export default function AdminProducts() {
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
-    if (isSupabaseConfigured) {
-      await supabase.from("products").delete().eq("id", deleteTarget.id);
-    } else {
-      await base44.entities.Product.delete(deleteTarget.id);
+    try {
+      if (isSupabaseConfigured) {
+        const { error } = await supabase.from("products").delete().eq("id", deleteTarget.id);
+        if (error) throw error;
+      } else {
+        await base44.entities.Product.delete(deleteTarget.id);
+      }
+    } catch (err) {
+      console.error("Delete failed:", err);
+      alert("Failed to delete product: " + (err.message || "Permission denied"));
     }
     setDeleteTarget(null);
     load();
@@ -172,10 +178,16 @@ export default function AdminProducts() {
   const allSelected = products.length > 0 && selected.size === products.length;
   const toggleSelectAll = () => setSelected(allSelected ? new Set() : new Set(products.map((p) => p.id)));
   const confirmBulkDelete = async () => {
-    if (isSupabaseConfigured) {
-      await supabase.from("products").delete().in("id", Array.from(selected));
-    } else {
-      await base44.entities.Product.deleteMany({ id: { $in: Array.from(selected) } });
+    try {
+      if (isSupabaseConfigured) {
+        const { error } = await supabase.from("products").delete().in("id", Array.from(selected));
+        if (error) throw error;
+      } else {
+        await base44.entities.Product.deleteMany({ id: { $in: Array.from(selected) } });
+      }
+    } catch (err) {
+      console.error("Bulk delete failed:", err);
+      alert("Failed to delete products: " + (err.message || "Permission denied"));
     }
     setSelected(new Set());
     setBulkDeleteOpen(false);

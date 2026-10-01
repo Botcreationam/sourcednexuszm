@@ -83,20 +83,24 @@ const AuthenticatedApp = () => {
 };
 
 
+import { ThemeProvider } from '@/components/ThemeProvider';
+
 function App() {
 
   return (
-    <AuthProvider>
-      <CartProvider>
-        <QueryClientProvider client={queryClientInstance}>
-          <Router>
-            <ScrollToTop />
-            <AuthenticatedApp />
-          </Router>
-          <Toaster />
-        </QueryClientProvider>
-      </CartProvider>
-    </AuthProvider>
+    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme" attribute="class">
+      <AuthProvider>
+        <CartProvider>
+          <QueryClientProvider client={queryClientInstance}>
+            <Router>
+              <ScrollToTop />
+              <AuthenticatedApp />
+            </Router>
+            <Toaster />
+          </QueryClientProvider>
+        </CartProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
 

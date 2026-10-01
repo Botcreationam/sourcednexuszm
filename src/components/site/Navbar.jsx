@@ -6,6 +6,7 @@ import { useCart } from "@/lib/CartContext";
 import PreferencesModal from "./PreferencesModal";
 import OnboardingModal from "./OnboardingModal";
 import SignOutModal from "./SignOutModal";
+import { ModeToggle } from "@/components/ModeToggle";
 
 const LINKS = [
   { label: "Home", to: "/" },
@@ -137,6 +138,7 @@ export default function Navbar() {
 
               {/* Inquiry Cart & Wishlist Trigger Icons */}
               <div className="flex items-center gap-2 border-l border-border/80 pl-4">
+                <ModeToggle />
 
                 <button
                   type="button"
@@ -171,6 +173,7 @@ export default function Navbar() {
 
             {/* Mobile Header Controls */}
             <div className="flex items-center gap-1 lg:hidden">
+              <ModeToggle />
               <button
                 type="button"
                 onClick={openWishlist}

@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate, Navigate, NavLink } from "react
 import { LayoutDashboard, Shirt, Tags, ClipboardList, ExternalLink, LogOut, Menu, X, MessageSquareQuote } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { ADMIN_EMAIL } from "@/lib/adminAccess";
+import { ModeToggle } from "@/components/ModeToggle";
 
 const NAV = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -65,6 +66,10 @@ export default function AdminLayout() {
         <Link to="/" target="_blank" className="flex items-center gap-3 px-3 py-3 text-sm tracking-wide-2 uppercase text-foreground/70 hover:bg-muted">
           <ExternalLink className="w-4 h-4" strokeWidth={1.5} /> View Site
         </Link>
+        <div className="flex items-center justify-between px-3 py-2">
+          <span className="text-sm tracking-wide-2 uppercase text-foreground/70">Theme</span>
+          <ModeToggle />
+        </div>
         <button onClick={doLogout} className="w-full flex items-center gap-3 px-3 py-3 text-sm tracking-wide-2 uppercase text-foreground/70 hover:bg-muted">
           <LogOut className="w-4 h-4" strokeWidth={1.5} /> Logout
         </button>
