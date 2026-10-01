@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, LogOut, Sliders, Heart, ShoppingBag } from "lucide-react";
+import { Menu, X, LogOut, Sliders, Heart, ShoppingBag, MessageSquare } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
+import { supabase } from "@/lib/supabase";
 import PreferencesModal from "./PreferencesModal";
 import OnboardingModal from "./OnboardingModal";
 import SignOutModal from "./SignOutModal";
@@ -25,6 +26,7 @@ export default function Navbar() {
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [interestsOpen, setInterestsOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const location = useLocation();
 
   const navigate = useNavigate();
@@ -34,6 +36,27 @@ export default function Navbar() {
     isAuthenticated &&
     user?.app_metadata?.provider === "email" &&
     !user?.email_confirmed_at;
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const fetchUnread = async () => {
+        const { count } = await supabase
+          .from("customer_inquiries")
+          .select("*", { count: 'exact', head: true })
+          .eq("user_id", user.id)
+          .eq("has_unread_customer", true);
+        if (count !== null) setUnreadMessages(count);
+      };
+      fetchUnread();
+      
+      const channel = supabase.channel('navbar-messages')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'customer_inquiries', filter: `user_id=eq.${user.id}` }, () => {
+          fetchUnread();
+        })
+        .subscribe();
+      return () => { supabase.removeChannel(channel); };
+    }
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -136,9 +159,25 @@ export default function Navbar() {
                 </Link>
               )}
 
-              {/* Inquiry Cart & Wishlist Trigger Icons */}
+              {/* Inquiry Cart, Messages & Wishlist Trigger Icons */}
               <div className="flex items-center gap-2 border-l border-border/80 pl-4">
                 <ModeToggle />
+
+                {isAuthenticated && (
+                  <button
+                    type="button"
+                    onClick={() => handleNav("/messages")}
+                    className="relative p-2 text-foreground/80 hover:text-foreground transition-all hover:scale-110"
+                    title="Messages"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    {unreadMessages > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-in zoom-in">
+                        {unreadMessages}
+                      </span>
+                    )}
+                  </button>
+                )}
 
                 <button
                   type="button"
@@ -174,6 +213,20 @@ export default function Navbar() {
             {/* Mobile Header Controls */}
             <div className="flex items-center gap-1 lg:hidden">
               <ModeToggle />
+              {isAuthenticated && (
+                <button
+                  type="button"
+                  onClick={() => handleNav("/messages")}
+                  className="relative p-2 text-foreground/80 hover:text-foreground"
+                >
+                  <MessageSquare className="w-5 h-5" />
+                  {unreadMessages > 0 && (
+                    <span className="absolute top-1 right-1 bg-blue-500 text-white text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
+                      {unreadMessages}
+                    </span>
+                  )}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={openWishlist}
@@ -228,6 +281,19 @@ export default function Navbar() {
                 {l.label}
               </button>
             ))}
+            {isAuthenticated && (
+              <button
+                onClick={() => handleNav("/messages")}
+                className="text-left py-3 text-sm tracking-wide-2 uppercase border-b border-border/60 flex items-center justify-between text-[#C5A059]"
+              >
+                Messages
+                {unreadMessages > 0 && (
+                  <span className="bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    {unreadMessages} New
+                  </span>
+                )}
+              </button>
+            )}
             {isAuthenticated ? (
               <div className="pt-3 mt-2 border-t border-border space-y-3">
                 <div className="flex flex-col gap-1">

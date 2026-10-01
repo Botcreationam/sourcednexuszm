@@ -21,6 +21,7 @@ import Privacy from './pages/Privacy';
 import Accessibility from './pages/Accessibility';
 import RefundPolicy from './pages/RefundPolicy';
 import TermsAndConditions from './pages/TermsAndConditions';
+import Messages from './pages/Messages';
 import AdminLayout from '@/components/admin/AdminLayout';
 import SiteLayout from '@/components/site/SiteLayout';
 import Dashboard from './pages/admin/Dashboard';
@@ -68,6 +69,7 @@ const AuthenticatedApp = () => {
         <Route path="/accessibility" element={<Accessibility />} />
         <Route path="/refund-policy" element={<RefundPolicy />} />
         <Route path="/terms" element={<TermsAndConditions />} />
+        <Route path="/messages" element={<Messages />} />
       </Route>
 
       {/* Admin */}

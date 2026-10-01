@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { MessageSquare, Check, CheckCircle2, Clock, Inbox, MailOpen, AlertCircle, Archive } from "lucide-react";
+import { MessageSquare, Check, CheckCircle2, Clock, Inbox, MailOpen, AlertCircle, Archive, ArrowLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
@@ -92,7 +92,7 @@ export default function AdminInbox() {
   return (
     <div className="flex h-[calc(100vh-80px)] border border-border mt-4 mx-6 md:mx-10 max-w-7xl">
       {/* Sidebar / Inbox List */}
-      <div className="w-1/3 border-r border-border bg-card flex flex-col">
+      <div className={`w-full md:w-1/3 border-r border-border bg-card flex-col ${selectedInquiry ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-4 border-b border-border">
           <h1 className="font-display text-2xl mb-4">Admin Inbox</h1>
           <div className="flex flex-wrap gap-2">
@@ -140,13 +140,18 @@ export default function AdminInbox() {
       </div>
 
       {/* Chat Area */}
-      <div className="w-2/3 bg-background flex flex-col">
+      <div className={`w-full md:w-2/3 bg-background flex-col ${!selectedInquiry ? 'hidden md:flex' : 'flex'}`}>
         {selectedInquiry ? (
           <>
             <div className="p-4 border-b border-border flex justify-between items-center bg-card">
-              <div>
-                <h2 className="font-semibold text-lg">{selectedInquiry.customer_name || "Anonymous"}</h2>
-                <p className="text-xs text-muted-foreground">Ref: {selectedInquiry.id} • {selectedInquiry.inquiry_type}</p>
+              <div className="flex items-center gap-3">
+                <button className="md:hidden p-2 -ml-2 text-muted-foreground hover:text-foreground" onClick={() => setSelectedInquiry(null)}>
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div>
+                  <h2 className="font-semibold text-lg">{selectedInquiry.customer_name || "Anonymous"}</h2>
+                  <p className="text-xs text-muted-foreground">Ref: {selectedInquiry.id.substring(0, 8)} • {selectedInquiry.inquiry_type}</p>
+                </div>
               </div>
               <div className="flex gap-2">
                 <select 
@@ -164,7 +169,7 @@ export default function AdminInbox() {
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.map((msg, idx) => (
                 <div key={msg.id || idx} className={`flex ${msg.is_admin ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[75%] p-3 text-sm ${msg.is_admin ? "bg-[#C5A059]/20 text-[#E5C07B] border border-[#C5A059]/30" : "bg-muted text-foreground border border-border"}`}>
+                  <div className={`max-w-[85%] md:max-w-[75%] p-3 text-sm ${msg.is_admin ? "bg-[#C5A059]/20 text-[#E5C07B] border border-[#C5A059]/30" : "bg-muted text-foreground border border-border"}`}>
                     <p>{msg.content}</p>
                     <div className="flex items-center gap-1 justify-end mt-1 text-[10px] opacity-70">
                       <span>{new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>

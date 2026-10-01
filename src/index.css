@@ -97,10 +97,11 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
+  html, body {
     @apply bg-background text-foreground font-body;
     font-weight: 300;
     -webkit-font-smoothing: antialiased;
+    height: 100%;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -125,9 +126,9 @@ html {
 
 /* Thin elegant scrollbar */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: hsl(40 33% 96%); }
-::-webkit-scrollbar-thumb { background: hsl(35 16% 80%); border-radius: 9999px; }
-::-webkit-scrollbar-thumb:hover { background: hsl(32 16% 70%); }
+::-webkit-scrollbar-track { background: hsl(var(--background)); }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
 
 /* Hide scrollbar for horizontal carousels */
 .no-scrollbar::-webkit-scrollbar { display: none; }
