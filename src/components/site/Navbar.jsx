@@ -229,37 +229,37 @@ export default function Navbar() {
               </button>
             ))}
             {isAuthenticated ? (
-              <div className="pt-3 mt-2 border-t border-border space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide-2 text-foreground truncate">{user?.email}</p>
+              <div className="pt-3 mt-2 border-t border-border space-y-3">
+                <div className="flex flex-col gap-1">
+                  <p className="text-xs uppercase tracking-wide-2 text-foreground break-all">{user?.email}</p>
+                  <div className="flex flex-wrap gap-2 mt-1">
                     {isEmailUnverified && (
-                      <span className="text-[9px] uppercase tracking-wide-2 text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded mt-0.5 inline-block">
+                      <span className="text-[9px] uppercase tracking-wide-2 text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded inline-block">
                         Unverified Email
                       </span>
                     )}
                     {isAdmin && (
-                      <Link to="/admin" onClick={() => setOpen(false)} className="text-[10px] tracking-wide-2 uppercase text-[#C5A059] underline mt-0.5 inline-block">
+                      <Link to="/admin" onClick={() => setOpen(false)} className="text-[10px] tracking-wide-2 uppercase text-[#C5A059] underline inline-block">
                         Admin Panel →
                       </Link>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => { setOpen(false); setPreferencesOpen(true); }}
-                      className="text-xs uppercase tracking-wide-2 text-muted-foreground hover:text-foreground p-1 border border-border"
-                    >
-                      Preferences
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setOpen(false); setSignOutOpen(true); }}
-                      className="text-xs uppercase tracking-wide-2 text-muted-foreground hover:text-foreground p-1 border border-border"
-                    >
-                      Sign Out
-                    </button>
-                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setOpen(false); setPreferencesOpen(true); }}
+                    className="flex-1 text-xs uppercase tracking-wide-2 text-muted-foreground hover:text-foreground p-2 border border-border text-center"
+                  >
+                    Preferences
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setOpen(false); setSignOutOpen(true); }}
+                    className="flex-1 text-xs uppercase tracking-wide-2 text-muted-foreground hover:text-foreground p-2 border border-border text-center"
+                  >
+                    Sign Out
+                  </button>
                 </div>
               </div>
             ) : (
