@@ -28,6 +28,7 @@ import AdminProducts from './pages/admin/AdminProducts';
 import AdminCategories from './pages/admin/AdminCategories';
 import AdminPreorders from './pages/admin/AdminPreorders';
 import AdminInquiries from './pages/admin/AdminInquiries';
+import AdminInbox from './pages/admin/AdminInbox';
 import AdminModeration from './pages/admin/AdminModeration';
 import AdminPortalLogin from './pages/AdminPortalLogin';
 import { CartProvider } from '@/lib/CartContext';
@@ -72,6 +73,7 @@ const AuthenticatedApp = () => {
       {/* Admin */}
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Dashboard />} />
+        <Route path="inbox" element={<AdminInbox />} />
         <Route path="inquiries" element={<AdminInquiries />} />
         <Route path="products" element={<AdminProducts />} />
         <Route path="categories" element={<AdminCategories />} />

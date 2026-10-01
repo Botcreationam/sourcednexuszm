@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate, Navigate, NavLink } from "react-router-dom";
-import { LayoutDashboard, Shirt, Tags, ClipboardList, ExternalLink, LogOut, Menu, X, MessageSquareQuote, ShieldAlert } from "lucide-react";
+import { LayoutDashboard, Shirt, Tags, ClipboardList, ExternalLink, LogOut, Menu, X, MessageSquareQuote, ShieldAlert, Inbox } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { ADMIN_EMAIL } from "@/lib/adminAccess";
 import { ModeToggle } from "@/components/ModeToggle";
 
 const NAV = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/admin/inbox", label: "Inbox", icon: Inbox },
   { to: "/admin/inquiries", label: "Customer Inquiries", icon: MessageSquareQuote },
   { to: "/admin/products", label: "Products", icon: Shirt },
   { to: "/admin/categories", label: "Categories", icon: Tags },

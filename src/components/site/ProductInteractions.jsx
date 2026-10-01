@@ -16,12 +16,15 @@ export default function ProductInteractions({ productId }) {
   // Review Form
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
+  const [reviewTitle, setReviewTitle] = useState("");
   const [reviewText, setReviewText] = useState("");
+  const [experienceDetails, setExperienceDetails] = useState("");
   const [userReview, setUserReview] = useState(null);
   
   // Comment Form
   const [commentText, setCommentText] = useState("");
   const [replyTo, setReplyTo] = useState(null);
+  const [editingComment, setEditingComment] = useState(null);
 
   useEffect(() => {
     fetchReviews();
@@ -54,7 +57,9 @@ export default function ProductInteractions({ productId }) {
         if (mine) {
           setUserReview(mine);
           setRating(mine.rating);
+          setReviewTitle(mine.title || "");
           setReviewText(mine.review_text || "");
+          setExperienceDetails(mine.experience_details || "");
         }
       }
     }
@@ -62,7 +67,7 @@ export default function ProductInteractions({ productId }) {
   };
 
   const fetchComments = async () => {
-    const { data } = await supabase.from("product_comments").select("*, auth.users(raw_user_meta_data)").eq("product_id", productId).order("created_at", { ascending: true });
+    const { data } = await supabase.from("product_comments").select("*").eq("product_id", productId).order("created_at", { ascending: true });
     if (data) setComments(data);
     setLoadingComments(false);
   };
@@ -73,14 +78,15 @@ export default function ProductInteractions({ productId }) {
     if (rating === 0) return toast({ title: "Please select a rating", variant: "destructive" });
     
     try {
-      const payload = { product_id: productId, user_id: user.id, rating, review_text: reviewText };
-      if (userReview) {
-        await supabase.from("product_reviews").update(payload).eq("id", userReview.id);
-        toast({ title: "Review updated" });
-      } else {
-        await supabase.from("product_reviews").insert(payload);
-        toast({ title: "Review submitted" });
-      }
+      const { error } = await supabase.rpc("upsert_product_review", {
+        p_product_id: productId,
+        p_rating: rating,
+        p_title: reviewTitle,
+        p_review_text: reviewText,
+        p_experience_details: experienceDetails
+      });
+      if (error) throw error;
+      toast({ title: userReview ? "Review updated (Pending Approval)" : "Review submitted for moderation" });
       fetchReviews();
     } catch (err) {
       console.error(err);
@@ -94,7 +100,9 @@ export default function ProductInteractions({ productId }) {
       await supabase.from("product_reviews").delete().eq("id", userReview.id);
       setUserReview(null);
       setRating(0);
+      setReviewTitle("");
       setReviewText("");
+      setExperienceDetails("");
       toast({ title: "Review deleted" });
       fetchReviews();
     } catch (err) {
@@ -108,18 +116,41 @@ export default function ProductInteractions({ productId }) {
     if (!commentText.trim()) return;
     
     try {
-      await supabase.from("product_comments").insert({
-        product_id: productId,
-        user_id: user.id,
-        content: commentText,
-        parent_id: replyTo
-      });
+      if (editingComment) {
+        await supabase.from("product_comments").update({ content: commentText }).eq("id", editingComment.id);
+        toast({ title: "Comment updated" });
+      } else {
+        await supabase.from("product_comments").insert({
+          product_id: productId,
+          user_id: user.id,
+          user_name: user.user_metadata?.name || user.email?.split("@")[0] || "Anonymous",
+          content: commentText,
+          parent_id: replyTo
+        });
+        toast({ title: "Comment posted" });
+      }
       setCommentText("");
       setReplyTo(null);
-      toast({ title: "Comment posted" });
+      setEditingComment(null);
     } catch (err) {
       toast({ title: "Error posting comment", variant: "destructive" });
     }
+  };
+
+  const deleteComment = async (id) => {
+    try {
+      await supabase.from("product_comments").delete().eq("id", id);
+      toast({ title: "Comment deleted" });
+    } catch (err) {
+      toast({ title: "Error deleting comment", variant: "destructive" });
+    }
+  };
+
+  const startEditComment = (comment) => {
+    setEditingComment(comment);
+    setCommentText(comment.content);
+    setReplyTo(comment.parent_id);
+    document.getElementById("comment-input")?.focus();
   };
 
   const renderStars = (value, setVal = null, hoverVal = null, setHoverVal = null) => {
@@ -153,13 +184,27 @@ export default function ProductInteractions({ productId }) {
           <form onSubmit={submitReview} className="mb-10 bg-zinc-900/40 border border-zinc-800 p-6">
             <h3 className="text-sm font-medium text-white mb-4">{userReview ? "Update your review" : "Write a review"}</h3>
             <div className="mb-4">
+              <label className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1 block">Your Rating</label>
               {renderStars(rating, setRating, hoverRating, setHoverRating)}
             </div>
+            <input 
+              type="text"
+              value={reviewTitle}
+              onChange={(e) => setReviewTitle(e.target.value)}
+              placeholder="Review Title"
+              className="w-full bg-zinc-950 border border-zinc-800 text-sm p-3 text-white mb-3"
+            />
             <textarea 
               value={reviewText}
               onChange={(e) => setReviewText(e.target.value)}
               placeholder="Share your thoughts about this product..."
               className="w-full bg-zinc-950 border border-zinc-800 text-sm p-3 text-white mb-3 min-h-[80px]"
+            />
+            <textarea 
+              value={experienceDetails}
+              onChange={(e) => setExperienceDetails(e.target.value)}
+              placeholder="Optional: Product experience details (e.g., used for 2 weeks, great battery...)"
+              className="w-full bg-zinc-950 border border-zinc-800 text-sm p-3 text-zinc-300 mb-3 min-h-[60px]"
             />
             <div className="flex gap-3">
               <button type="submit" className="bg-[#C5A059] text-black px-4 py-2 text-xs uppercase tracking-wide font-medium">
@@ -184,12 +229,18 @@ export default function ProductInteractions({ productId }) {
           ) : (
             reviews.map(r => (
               <div key={r.id} className="border-b border-zinc-800 pb-4">
-                <div className="flex items-center gap-3 mb-2">
+                <div className="flex items-center gap-3 mb-1">
                   {renderStars(r.rating)}
                   <span className="text-xs text-zinc-500">{new Date(r.created_at).toLocaleDateString()}</span>
                   {r.status === "pending" && <span className="text-[10px] text-amber-500 bg-amber-500/10 px-2 py-0.5 ml-auto">Pending Approval</span>}
                 </div>
+                {r.title && <h4 className="text-sm font-semibold text-white mb-1">{r.title}</h4>}
                 <p className="text-sm text-zinc-300">{r.review_text}</p>
+                {r.experience_details && (
+                  <div className="mt-2 text-xs text-zinc-500 italic bg-zinc-900/50 p-2 border-l-2 border-zinc-700">
+                    Experience: {r.experience_details}
+                  </div>
+                )}
               </div>
             ))
           )}
@@ -205,13 +256,20 @@ export default function ProductInteractions({ productId }) {
         {isAuthenticated ? (
           <form onSubmit={submitComment} className="mb-10 flex gap-3 items-start">
             <div className="flex-1 space-y-2">
-              {replyTo && (
+              {replyTo && !editingComment && (
                 <div className="flex items-center justify-between bg-zinc-900 px-3 py-1 border border-zinc-800">
                   <span className="text-xs text-zinc-400">Replying to comment...</span>
                   <button type="button" onClick={() => setReplyTo(null)} className="text-zinc-500 hover:text-white"><X className="w-3 h-3" /></button>
                 </div>
               )}
+              {editingComment && (
+                <div className="flex items-center justify-between bg-zinc-900 px-3 py-1 border border-zinc-800">
+                  <span className="text-xs text-zinc-400">Editing comment...</span>
+                  <button type="button" onClick={() => { setEditingComment(null); setCommentText(""); setReplyTo(null); }} className="text-zinc-500 hover:text-white"><X className="w-3 h-3" /></button>
+                </div>
+              )}
               <input 
+                id="comment-input"
                 type="text" 
                 value={commentText}
                 onChange={e => setCommentText(e.target.value)}
@@ -237,21 +295,35 @@ export default function ProductInteractions({ productId }) {
               <div key={comment.id} className="space-y-3">
                 <div className="bg-zinc-900/30 p-4 border border-zinc-800">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-zinc-400">User</span>
+                    <span className="text-xs font-medium text-zinc-400">{comment.user_name || "Anonymous"}</span>
                     <span className="text-[10px] text-zinc-500">{new Date(comment.created_at).toLocaleString()}</span>
                   </div>
                   <p className="text-sm text-white">{comment.content}</p>
-                  <button onClick={() => setReplyTo(comment.id)} className="text-[10px] uppercase tracking-wide text-zinc-500 hover:text-white mt-3 block">Reply</button>
+                  <div className="flex gap-4 mt-3">
+                    <button onClick={() => setReplyTo(comment.id)} className="text-[10px] uppercase tracking-wide text-zinc-500 hover:text-white">Reply</button>
+                    {user?.id === comment.user_id && (
+                      <>
+                        <button onClick={() => startEditComment(comment)} className="text-[10px] uppercase tracking-wide text-blue-500 hover:text-blue-400">Edit</button>
+                        <button onClick={() => deleteComment(comment.id)} className="text-[10px] uppercase tracking-wide text-red-500 hover:text-red-400">Delete</button>
+                      </>
+                    )}
+                  </div>
                 </div>
                 
                 {/* Nested Replies */}
                 {comments.filter(c => c.parent_id === comment.id).map(reply => (
                   <div key={reply.id} className="ml-8 bg-zinc-900/10 p-4 border-l border-zinc-700">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-zinc-400">User</span>
+                      <span className="text-xs font-medium text-zinc-400">{reply.user_name || "Anonymous"}</span>
                       <span className="text-[10px] text-zinc-500">{new Date(reply.created_at).toLocaleString()}</span>
                     </div>
                     <p className="text-sm text-white">{reply.content}</p>
+                    {user?.id === reply.user_id && (
+                      <div className="flex gap-4 mt-3">
+                        <button onClick={() => startEditComment(reply)} className="text-[10px] uppercase tracking-wide text-blue-500 hover:text-blue-400">Edit</button>
+                        <button onClick={() => deleteComment(reply.id)} className="text-[10px] uppercase tracking-wide text-red-500 hover:text-red-400">Delete</button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
