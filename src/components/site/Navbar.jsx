@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, LogOut, Sliders, Sparkles, Heart, ShoppingBag } from "lucide-react";
+import { Menu, X, LogOut, Sliders, Heart, ShoppingBag } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import PreferencesModal from "./PreferencesModal";
@@ -18,7 +18,7 @@ const LINKS = [
 ];
 
 export default function Navbar() {
-  const { user, isAuthenticated, isAdmin, logout } = useAuth();
+  const { user, isAuthenticated, isAdmin } = useAuth();
   const { cartCount, wishlistCount, openCart, openWishlist } = useCart();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
