@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { isSupabaseConfigured, getSupabaseProducts } from "@/lib/supabase";
+import { isSupabaseConfigured, getSupabaseProducts, supabase } from "@/lib/supabase";
 import { recordSearchQuery } from "@/lib/recommendations";
 import ProductCard from "@/components/site/ProductCard";
 import ScrollReveal from "@/components/site/ScrollReveal";
