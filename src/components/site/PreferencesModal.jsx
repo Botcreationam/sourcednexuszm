@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Sliders, Shield, RotateCcw, Sparkles, ExternalLink, CheckCircle2 } from "lucide-react";
+import { Sliders, RotateCcw, Sparkles, ExternalLink, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { supabase } from "@/lib/supabase";
 import {
@@ -63,7 +63,7 @@ export default function PreferencesModal({ open, onClose, onOpenInterests }) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg bg-card border-border p-6 md:p-8">
+      <DialogContent className="max-w-lg bg-card border-border p-6 md:p-8 max-h-[85vh] overflow-y-auto no-scrollbar">
         <DialogHeader className="space-y-1">
           <div className="flex items-center gap-2 text-primary text-xs uppercase tracking-wide-2 mb-1">
             <Sliders className="w-4 h-4" />
