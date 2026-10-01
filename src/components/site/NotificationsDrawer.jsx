@@ -33,7 +33,26 @@ export default function NotificationsDrawer({ open, onClose }) {
     };
     
     fetchNotifications();
+    
+    const channel = supabase.channel('notifications-drawer')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'customer_inquiries', filter: `user_id=eq.${user.id}` }, () => {
+        fetchNotifications();
+      })
+      .subscribe();
+      
+    return () => { supabase.removeChannel(channel); };
   }, [open, isAuthenticated, user]);
+
+  const handleMarkAllAsRead = async () => {
+    // Optimistically clear locally
+    const unreadIds = notifications.map(n => n.id);
+    setNotifications([]);
+    
+    // Process each unread inquiry (they will be caught by RLS if RPC not updated, but we try our best)
+    for (const id of unreadIds) {
+      await supabase.rpc('mark_messages_read', { p_inquiry_id: id, p_is_admin: false });
+    }
+  };
 
   if (!open) return null;
 
@@ -47,9 +66,16 @@ export default function NotificationsDrawer({ open, onClose }) {
               <Bell className="w-5 h-5" />
               <h2 className="font-display text-lg tracking-wide uppercase">Notifications</h2>
             </div>
-            <button onClick={onClose} className="p-2 text-muted-foreground hover:text-foreground">
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              {notifications.length > 0 && (
+                <button onClick={handleMarkAllAsRead} className="text-[9px] uppercase tracking-wide-2 text-muted-foreground hover:text-foreground mr-2">
+                  Mark all read
+                </button>
+              )}
+              <button onClick={onClose} className="p-2 text-muted-foreground hover:text-foreground">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
           
           <div className="flex-1 overflow-y-auto p-0">
