@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { 
   Camera, MessageSquare, Truck, ShieldCheck, CheckCircle2, 
-  Smartphone, Watch, Shirt, Sparkles, ArrowRight 
+  Smartphone, Watch, Shirt, Crown, ArrowRight 
 } from "lucide-react";
 import { buildWhatsAppUrl, photoSourcingMessage, WHATSAPP_DISPLAY } from "@/lib/whatsapp";
 import ScrollReveal from "@/components/site/ScrollReveal";
@@ -53,7 +53,7 @@ const CATEGORIES_SOURCED = [
     items: "Tailored two & three-piece suits, formal blazers, tuxedo sets, silk ties.",
   },
   {
-    icon: Sparkles,
+    icon: Crown,
     title: "Dresses & Haute Couture",
     items: "Evening gowns, cocktail dresses, statement satin wrap dresses, runway looks.",
   },

@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Camera, Truck, MessageSquare, Sparkles, SlidersHorizontal, Compass } from "lucide-react";
+import { ArrowRight, Camera, Truck, MessageSquare, SlidersHorizontal, Compass } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { isSupabaseConfigured, getSupabaseProducts } from "@/lib/supabase";
 import { useAuth } from "@/lib/AuthContext";
@@ -230,7 +230,6 @@ export default function Home() {
                     onClick={() => setInterestsModalOpen(true)}
                     className="inline-flex items-center gap-1.5 text-[10px] tracking-wide-2 uppercase border border-foreground/30 px-3 py-1.5 hover:bg-foreground hover:text-background transition-colors"
                   >
-                    <Sparkles className="w-3 h-3 text-[#C5A059]" />
                     <span>Tune Interests</span>
                   </button>
                   <button
