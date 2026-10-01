@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, LogOut, Sliders, Heart, ShoppingBag, MessageSquare } from "lucide-react";
+import { Menu, X, LogOut, Sliders, Heart, ShoppingBag, MessageSquare, Home, Bell } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import { supabase } from "@/lib/supabase";
@@ -219,7 +219,7 @@ export default function Navbar() {
                   onClick={() => handleNav("/messages")}
                   className="relative p-2 text-foreground/80 hover:text-foreground"
                 >
-                  <MessageSquare className="w-5 h-5" />
+                  <Bell className="w-5 h-5" />
                   {unreadMessages > 0 && (
                     <span className="absolute top-1 right-1 bg-blue-500 text-white text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
                       {unreadMessages}
@@ -237,19 +237,6 @@ export default function Navbar() {
                 {wishlistCount > 0 && (
                   <span className="absolute top-1 right-1 bg-red-500 text-white text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
                     {wishlistCount}
-                  </span>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={openCart}
-                className="relative p-2 text-foreground/80 hover:text-foreground"
-                aria-label={`Inquiry Cart (${cartCount} items)`}
-              >
-                <ShoppingBag className="w-5 h-5" />
-                {cartCount > 0 && (
-                  <span className="absolute top-1 right-1 bg-[#C5A059] text-black text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
-                    {cartCount}
                   </span>
                 )}
               </button>
@@ -336,6 +323,47 @@ export default function Navbar() {
           </div>
         </div>
       </header>
+
+      {/* Mobile Bottom Navigation */}
+      <div className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-background border-t border-border flex justify-around items-center h-[60px] pb-safe">
+        <button
+          onClick={() => handleNav("/")}
+          className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground hover:text-foreground"
+        >
+          <Home className="w-5 h-5 mb-1" />
+          <span className="text-[9px] uppercase tracking-wide-2">Home</span>
+        </button>
+        <button
+          onClick={openCart}
+          className="relative flex flex-col items-center justify-center flex-1 h-full text-muted-foreground hover:text-foreground"
+        >
+          <div className="relative">
+            <ShoppingBag className="w-5 h-5 mb-1" />
+            {cartCount > 0 && (
+              <span className="absolute -top-1 -right-2 bg-[#C5A059] text-black text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
+                {cartCount}
+              </span>
+            )}
+          </div>
+          <span className="text-[9px] uppercase tracking-wide-2">Cart</span>
+        </button>
+        {isAuthenticated && (
+          <button
+            onClick={() => handleNav("/messages")}
+            className="relative flex flex-col items-center justify-center flex-1 h-full text-muted-foreground hover:text-foreground"
+          >
+            <div className="relative">
+              <MessageSquare className="w-5 h-5 mb-1" />
+              {unreadMessages > 0 && (
+                <span className="absolute -top-1 -right-2 bg-blue-500 text-white text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
+                  {unreadMessages}
+                </span>
+              )}
+            </div>
+            <span className="text-[9px] uppercase tracking-wide-2">Inbox</span>
+          </button>
+        )}
+      </div>
 
       {/* Preferences & Interests Modals */}
       <PreferencesModal

@@ -10,6 +10,9 @@ export default function AdminInbox() {
   const [selectedInquiry, setSelectedInquiry] = useState(null);
   const [messages, setMessages] = useState([]);
   const [replyText, setReplyText] = useState("");
+  const [customerTyping, setCustomerTyping] = useState(false);
+  const typingTimeoutRef = useRef(null);
+  const broadcastChannelRef = useRef(null);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -28,7 +31,18 @@ export default function AdminInbox() {
           }
         }
       })
+      .on('broadcast', { event: 'typing' }, (payload) => {
+        if (selectedInquiry && payload.payload.inquiry_id === selectedInquiry.id) {
+          if (!payload.payload.is_admin) {
+            setCustomerTyping(true);
+            clearTimeout(typingTimeoutRef.current);
+            typingTimeoutRef.current = setTimeout(() => setCustomerTyping(false), 3000);
+          }
+        }
+      })
       .subscribe();
+      
+    broadcastChannelRef.current = channel;
     return () => { supabase.removeChannel(channel); };
   }, [selectedInquiry]);
 
@@ -58,6 +72,17 @@ export default function AdminInbox() {
   const markAsRead = async (id) => {
     await supabase.rpc('mark_messages_read', { p_inquiry_id: id, p_is_admin: true });
     setInquiries(prev => prev.map(i => i.id === id ? { ...i, has_unread_admin: false } : i));
+  };
+
+  const handleTyping = (e) => {
+    setReplyText(e.target.value);
+    if (selectedInquiry && broadcastChannelRef.current) {
+      broadcastChannelRef.current.send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: { is_admin: true, inquiry_id: selectedInquiry.id }
+      });
+    }
   };
 
   const sendReply = async (e) => {
@@ -180,6 +205,16 @@ export default function AdminInbox() {
                   </div>
                 </div>
               ))}
+              
+              {customerTyping && (
+                <div className="flex justify-start">
+                  <div className="max-w-[75%] p-3 text-sm bg-muted text-foreground border border-border flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 bg-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 bg-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </div>
 
@@ -188,7 +223,7 @@ export default function AdminInbox() {
                 <input
                   type="text"
                   value={replyText}
-                  onChange={e => setReplyText(e.target.value)}
+                  onChange={handleTyping}
                   placeholder="Type a message to the customer..."
                   className="flex-1 bg-background border border-border px-4 py-2 text-sm text-foreground focus:outline-none focus:border-[#C5A059]"
                 />
