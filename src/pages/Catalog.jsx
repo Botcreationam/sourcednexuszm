@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { isSupabaseConfigured, getSupabaseProducts } from "@/lib/supabase";
+import { recordSearchQuery } from "@/lib/recommendations";
 import ProductCard from "@/components/site/ProductCard";
 import ScrollReveal from "@/components/site/ScrollReveal";
 import BrandedLoader from "@/components/BrandedLoader";
@@ -33,6 +34,14 @@ export default function Catalog() {
 
   const category = params.get("category") || "All";
   const sort = params.get("sort") || "newest";
+
+  useEffect(() => {
+    if (!search.trim()) return;
+    const timer = setTimeout(() => {
+      recordSearchQuery(search.trim());
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     async function loadProducts() {

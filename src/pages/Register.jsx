@@ -1,11 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserPlus, Mail, Lock, User, Loader2, CheckCircle2 } from "lucide-react";
+import { Mail, Lock, User, Loader2, CheckCircle2, ShieldAlert } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
+import GoogleIcon from "@/components/GoogleIcon";
+import OnboardingModal from "@/components/site/OnboardingModal";
+import TurnstileWidget, { verifyTurnstileToken } from "@/components/TurnstileWidget";
 
 export default function Register() {
   const { register, loginWithGoogle } = useAuth();
@@ -17,10 +20,21 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  
+  // Legal Consents (Not preselected as required by Zambian regulations)
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreePrivacy, setAgreePrivacy] = useState(false);
+  const [marketingConsent, setMarketingConsent] = useState(false);
+  
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Cloudflare Turnstile token & single-use ref
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstileRef = useRef(null);
 
   const handleGoogleSignIn = async () => {
     setError("");
@@ -28,7 +42,7 @@ export default function Register() {
     try {
       await loginWithGoogle(returnTo);
     } catch (err) {
-      setError(err?.message || "Failed to initialize Google sign-in.");
+      setError(err?.message || "Failed to initialize Google sign-in. Please ensure Supabase credentials are configured.");
       setGoogleLoading(false);
     }
   };
@@ -36,6 +50,11 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    if (!agreeTerms || !agreePrivacy) {
+      setError("Please review and accept both the Terms & Conditions and Privacy Policy to create your account.");
+      return;
+    }
 
     if (password.length < 6) {
       setError("Password must be at least 6 characters long.");
@@ -47,19 +66,43 @@ export default function Register() {
       return;
     }
 
+    if (!turnstileToken) {
+      setError("Please complete the Cloudflare security verification before creating your account.");
+      return;
+    }
+
     setLoading(true);
     try {
-      const data = await register(email, password, { full_name: name.trim() });
+      // 1. Canonical server-side siteverify verification
+      await verifyTurnstileToken(turnstileToken, "signup");
+
+      // 2. Existing registration logic (unchanged)
+      const legalMetadata = {
+        full_name: name.trim(),
+        terms_accepted: true,
+        terms_version: "2026-v1.0",
+        terms_accepted_at: new Date().toISOString(),
+        privacy_accepted: true,
+        privacy_version: "2026-v1.0",
+        privacy_accepted_at: new Date().toISOString(),
+        marketing_consent: marketingConsent,
+        personalization_consent: true,
+      };
+
+      const data = await register(email, password, legalMetadata, { captchaToken: turnstileToken });
       
-      // If user session is established immediately
+      // If user session is established immediately without email confirmation blocking
       if (data?.session) {
-        navigate(returnTo, { replace: true });
+        setShowOnboarding(true);
         return;
       }
 
-      // If email confirmation is enabled on Supabase project
+      // If email confirmation link was sent
       setSuccess(true);
     } catch (err) {
+      // Single-use token lifecycle: reset widget on submission failure
+      turnstileRef.current?.reset();
+      setTurnstileToken("");
       setError(err?.message || "Registration could not be completed. Please try again.");
     } finally {
       setLoading(false);
@@ -78,12 +121,15 @@ export default function Register() {
           </Link>
         }
       >
-        <div className="text-center py-4 space-y-3">
-          <p className="text-sm text-muted-foreground font-light">
+        <div className="text-center py-4 space-y-4">
+          <p className="text-sm text-muted-foreground font-light leading-relaxed">
             We've sent a verification link to <strong className="text-foreground">{email}</strong>.
-            Please check your inbox to activate your account and start ordering.
+            Please open the link in your email to confirm your account and activate protected features.
           </p>
-          <div className="pt-4">
+          <div className="p-3 bg-muted/40 rounded-lg text-xs text-muted-foreground font-light text-left">
+            💡 <strong>Note:</strong> Check your Spam or Promotions folder if the email doesn't appear within 2 minutes. Google sign-in users are automatically verified without email confirmation.
+          </div>
+          <div className="pt-2">
             <Button
               className="w-full h-12 font-medium"
               onClick={() => navigate(`/login?returnTo=${encodeURIComponent(returnTo)}`)}
@@ -97,143 +143,223 @@ export default function Register() {
   }
 
   return (
-    <AuthLayout
-      icon={UserPlus}
-      title="Create Your Account"
-      subtitle="Join Sourced Nexus for personal luxury sourcing"
-      footer={
-        <div className="space-y-2 text-center text-sm">
-          <div>
-            Already have an account?{" "}
-            <Link to={`/login?returnTo=${encodeURIComponent(returnTo)}`} className="text-primary font-medium hover:underline">
-              Sign In
-            </Link>
+    <>
+      <AuthLayout
+        logo="/logo.png"
+        title="Create Your Account"
+        subtitle="Join Sourced Nexus for personal luxury sourcing"
+        footer={
+          <div className="space-y-2 text-center text-sm">
+            <div>
+              Already have an account?{" "}
+              <Link to={`/login?returnTo=${encodeURIComponent(returnTo)}`} className="text-primary font-medium hover:underline">
+                Sign In
+              </Link>
+            </div>
+            <div>
+              <Link to="/" className="text-xs text-muted-foreground hover:text-foreground">
+                ← Continue browsing without logging in
+              </Link>
+            </div>
           </div>
-          <div>
-            <Link to="/" className="text-xs text-muted-foreground hover:text-foreground">
-              ← Continue browsing without logging in
-            </Link>
+        }
+      >
+        {error && (
+          <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm flex items-start gap-2">
+            <ShieldAlert className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <span>{error}</span>
           </div>
-        </div>
-      }
-    >
-      {error && (
-        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-          {error}
-        </div>
-      )}
+        )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="name">Full Name</Label>
-          <div className="relative">
-            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-            <Input
-              id="name"
-              type="text"
-              autoComplete="name"
-              autoFocus
-              placeholder="Your Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="pl-10 h-12"
-              required
-            />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Full Name</Label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <Input
+                id="name"
+                type="text"
+                autoComplete="name"
+                autoFocus
+                placeholder="Your Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="pl-10 h-12"
+                required
+                disabled={loading || googleLoading}
+              />
+            </div>
           </div>
-        </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="email">Email Address</Label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="pl-10 h-12"
-              required
-            />
+          <div className="space-y-2">
+            <Label htmlFor="email">Email Address</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="pl-10 h-12"
+                required
+                disabled={loading || googleLoading}
+              />
+            </div>
           </div>
-        </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="password">Password (min 6 characters)</Label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-            <Input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="pl-10 h-12"
-              required
-            />
+          <div className="space-y-2">
+            <Label htmlFor="password">Password (min 6 characters)</Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <Input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pl-10 h-12"
+                required
+                disabled={loading || googleLoading}
+              />
+            </div>
           </div>
-        </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="confirm">Confirm Password</Label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-            <Input
-              id="confirm"
-              type="password"
-              autoComplete="new-password"
-              placeholder="••••••••"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="pl-10 h-12"
-              required
-            />
+          <div className="space-y-2">
+            <Label htmlFor="confirm">Confirm Password</Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <Input
+                id="confirm"
+                type="password"
+                autoComplete="new-password"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="pl-10 h-12"
+                required
+                disabled={loading || googleLoading}
+              />
+            </div>
           </div>
-        </div>
 
-        <Button type="submit" className="w-full h-12 font-medium" disabled={loading || googleLoading}>
-          {loading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Creating Account...
-            </>
-          ) : (
-            "Create Account"
-          )}
-        </Button>
+          {/* Legal Acceptance Checkboxes (Not preselected) */}
+          <div className="space-y-3 pt-2 pb-1 border-t border-border">
+            <div className="flex items-start gap-2.5">
+              <input
+                id="agree-terms"
+                type="checkbox"
+                checked={agreeTerms}
+                onChange={(e) => setAgreeTerms(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-border text-foreground accent-foreground cursor-pointer"
+                required
+              />
+              <label htmlFor="agree-terms" className="text-xs text-muted-foreground leading-snug cursor-pointer select-none">
+                I agree to the{" "}
+                <Link to="/terms" target="_blank" rel="noopener noreferrer" className="text-foreground underline underline-offset-2 hover:opacity-80">
+                  Terms and Conditions
+                </Link>{" "}
+                governing orders and sourcing in Zambia. <span className="text-destructive">*</span>
+              </label>
+            </div>
 
-        <div className="relative my-4">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-border" />
+            <div className="flex items-start gap-2.5">
+              <input
+                id="agree-privacy"
+                type="checkbox"
+                checked={agreePrivacy}
+                onChange={(e) => setAgreePrivacy(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-border text-foreground accent-foreground cursor-pointer"
+                required
+              />
+              <label htmlFor="agree-privacy" className="text-xs text-muted-foreground leading-snug cursor-pointer select-none">
+                I have read and accept the{" "}
+                <Link to="/privacy" target="_blank" rel="noopener noreferrer" className="text-foreground underline underline-offset-2 hover:opacity-80">
+                  Privacy Policy
+                </Link>{" "}
+                under the Zambian Data Protection Act. <span className="text-destructive">*</span>
+              </label>
+            </div>
+
+            <div className="flex items-start gap-2.5">
+              <input
+                id="marketing-consent"
+                type="checkbox"
+                checked={marketingConsent}
+                onChange={(e) => setMarketingConsent(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-border text-foreground accent-foreground cursor-pointer"
+              />
+              <label htmlFor="marketing-consent" className="text-xs text-muted-foreground leading-snug cursor-pointer select-none">
+                (Optional) Receive personalized recommendations, new collection drops and private sourcing alerts.
+              </label>
+            </div>
           </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground tracking-wide-2 text-[10px]">
-              Or sign up with
-            </span>
-          </div>
-        </div>
 
-        <button
-          type="button"
-          onClick={handleGoogleSignIn}
-          disabled={loading || googleLoading}
-          className="w-full h-12 border border-border hover:border-foreground/60 transition-colors flex items-center justify-center gap-3 text-xs tracking-wide-2 uppercase font-medium bg-card/60"
-        >
-          {googleLoading ? (
-            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-          ) : (
-            <svg className="w-4 h-4" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3.03h3.88c2.27-2.09 3.665-5.17 3.665-9.12z" />
-              <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.03c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.13C3.27 21.36 7.33 24 12 24z" />
-              <path fill="#FBBC05" d="M5.28 14.29c-.25-.72-.38-1.49-.38-2.29s.13-1.57.38-2.29V6.57H1.26C.46 8.16 0 9.98 0 12s.46 3.84 1.26 5.43l4.02-3.14z" />
-              <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.27 2.64 1.26 6.57l4.02 3.14c.95-2.83 3.6-4.96 6.72-4.96z" />
-            </svg>
-          )}
-          <span>{googleLoading ? "Connecting..." : "Continue with Google"}</span>
-        </button>
-      </form>
-    </AuthLayout>
+          {/* Cloudflare Turnstile Verification Widget */}
+          <TurnstileWidget
+            ref={turnstileRef}
+            action="signup"
+            onVerify={(token) => {
+              setTurnstileToken(token);
+              setError("");
+            }}
+            onError={() => {
+              setError("Bot verification encountered an issue. Please refresh or retry.");
+            }}
+            onExpire={() => {
+              setTurnstileToken("");
+            }}
+          />
+
+          <Button type="submit" className="w-full h-12 font-medium" disabled={loading || googleLoading}>
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Creating Account...
+              </>
+            ) : (
+              "Create Account"
+            )}
+          </Button>
+
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground tracking-wide-2 text-[10px]">
+                Or sign up with
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            id="google-signup-btn"
+            onClick={handleGoogleSignIn}
+            disabled={loading || googleLoading}
+            className="w-full h-12 border border-border hover:border-foreground transition-all flex items-center justify-center gap-3 text-xs tracking-wide-2 uppercase font-medium bg-card hover:bg-muted/40 text-foreground shadow-sm"
+          >
+            {googleLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            ) : (
+              <GoogleIcon className="w-4 h-4" />
+            )}
+            <span>{googleLoading ? "Connecting to Google..." : "Continue with Google"}</span>
+          </button>
+        </form>
+      </AuthLayout>
+
+      {/* Immediate Onboarding Modal on successful instant registration */}
+      <OnboardingModal
+        open={showOnboarding}
+        onClose={() => {
+          setShowOnboarding(false);
+          navigate(returnTo, { replace: true });
+        }}
+      />
+    </>
   );
 }

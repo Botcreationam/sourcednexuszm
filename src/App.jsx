@@ -27,7 +27,9 @@ import Dashboard from './pages/admin/Dashboard';
 import AdminProducts from './pages/admin/AdminProducts';
 import AdminCategories from './pages/admin/AdminCategories';
 import AdminPreorders from './pages/admin/AdminPreorders';
+import AdminInquiries from './pages/admin/AdminInquiries';
 import AdminPortalLogin from './pages/AdminPortalLogin';
+import { CartProvider } from '@/lib/CartContext';
 
 import BrandedLoader from '@/components/BrandedLoader';
 
@@ -69,6 +71,7 @@ const AuthenticatedApp = () => {
       {/* Admin */}
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Dashboard />} />
+        <Route path="inquiries" element={<AdminInquiries />} />
         <Route path="products" element={<AdminProducts />} />
         <Route path="categories" element={<AdminCategories />} />
         <Route path="preorders" element={<AdminPreorders />} />
@@ -84,13 +87,15 @@ function App() {
 
   return (
     <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <ScrollToTop />
-          <AuthenticatedApp />
-        </Router>
-        <Toaster />
-      </QueryClientProvider>
+      <CartProvider>
+        <QueryClientProvider client={queryClientInstance}>
+          <Router>
+            <ScrollToTop />
+            <AuthenticatedApp />
+          </Router>
+          <Toaster />
+        </QueryClientProvider>
+      </CartProvider>
     </AuthProvider>
   )
 }

@@ -19,5 +19,17 @@ export default defineConfig({
       visualEditAgent: true
     }),
     react(),
-  ]
+  ],
+  server: {
+    proxy: {
+      '/api/verify-turnstile': {
+        target: 'http://localhost:10000',
+        changeOrigin: true,
+      },
+      '/api/inquiries': {
+        target: 'http://localhost:10000',
+        changeOrigin: true,
+      },
+    },
+  },
 });

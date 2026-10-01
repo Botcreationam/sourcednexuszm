@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext, useEffect, useCallback } fr
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
-import { ADMIN_EMAIL } from '@/lib/adminAccess';
+import { ADMIN_EMAIL, isAuthorizedAdmin } from '@/lib/adminAccess';
 
 const AuthContext = createContext();
 
@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     // Strict fallback: user email must strictly match official admin email
-    if (userEmail && userEmail.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+    if (userEmail && isAuthorizedAdmin(userEmail)) {
       return true;
     }
 
@@ -96,6 +96,15 @@ export const AuthProvider = ({ children }) => {
             setIsAuthenticated(true);
             const isAdm = await checkDatabaseAdminRole(u.id, u.email);
             setIsAdmin(isAdm);
+
+            // Handle redirect if returning from OAuth
+            try {
+              const pendingReturn = sessionStorage.getItem('sn_oauth_return_to');
+              if (pendingReturn && (window.location.pathname === '/login' || window.location.pathname === '/register')) {
+                sessionStorage.removeItem('sn_oauth_return_to');
+                window.location.href = pendingReturn;
+              }
+            } catch {}
           } else {
             setUser(null);
             setIsAuthenticated(false);
@@ -116,7 +125,7 @@ export const AuthProvider = ({ children }) => {
             if (isMounted) {
               setUser(currentUser);
               setIsAuthenticated(true);
-              setIsAdmin(currentUser?.role === 'admin' || currentUser?.email === ADMIN_EMAIL);
+              setIsAdmin(currentUser?.role === 'admin' || isAuthorizedAdmin(currentUser?.email));
             }
           }
         } catch (b44Err) {
@@ -140,13 +149,19 @@ export const AuthProvider = ({ children }) => {
   /**
    * Log in using email and password via Supabase Auth
    */
-  const login = async (email, password) => {
+  const login = async (email, password, options = {}) => {
     setAuthError(null);
     if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const signInPayload = {
         email: email.trim().toLowerCase(),
         password,
-      });
+      };
+      if (options?.captchaToken) {
+        signInPayload.options = {
+          captchaToken: options.captchaToken,
+        };
+      }
+      const { data, error } = await supabase.auth.signInWithPassword(signInPayload);
       if (error) throw error;
       const isAdm = await checkDatabaseAdminRole(data.user?.id, data.user?.email);
       setIsAdmin(isAdm);
@@ -157,18 +172,23 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+
   /**
    * Register a new user via Supabase Auth
    */
-  const register = async (email, password, metadata = {}) => {
+  const register = async (email, password, metadata = {}, options = {}) => {
     setAuthError(null);
     if (isSupabaseConfigured && supabase) {
+      const signUpOptions = {
+        data: metadata,
+      };
+      if (options?.captchaToken) {
+        signUpOptions.captchaToken = options.captchaToken;
+      }
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
-        options: {
-          data: metadata,
-        },
+        options: signUpOptions,
       });
       if (error) throw error;
       return data;
@@ -204,11 +224,15 @@ export const AuthProvider = ({ children }) => {
   /**
    * Send password reset email
    */
-  const resetPassword = async (email) => {
+  const resetPassword = async (email, options = {}) => {
     if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      const resetOptions = {
         redirectTo: `${window.location.origin}/reset-password`,
-      });
+      };
+      if (options?.captchaToken) {
+        resetOptions.captchaToken = options.captchaToken;
+      }
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), resetOptions);
       if (error) throw error;
       return data;
     } else {
@@ -223,14 +247,15 @@ export const AuthProvider = ({ children }) => {
   const loginWithGoogle = async (returnTo = '/') => {
     setAuthError(null);
     if (isSupabaseConfigured && supabase) {
-      const redirectOrigin = window.location.origin;
-      const cleanReturnTo = returnTo.startsWith('/') ? returnTo : `/${returnTo}`;
-      const redirectTo = `${redirectOrigin}${cleanReturnTo === '/' ? '' : cleanReturnTo}`;
+      try {
+        sessionStorage.setItem('sn_oauth_return_to', returnTo || '/');
+      } catch {}
 
+      const redirectOrigin = window.location.origin;
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo,
+          redirectTo: redirectOrigin,
           queryParams: {
             access_type: 'offline',
             prompt: 'select_account',
@@ -240,7 +265,7 @@ export const AuthProvider = ({ children }) => {
       if (error) throw error;
       return data;
     } else {
-      throw new Error('Supabase is not configured for Google authentication.');
+      throw new Error('Supabase anon key is missing. Please add VITE_SUPABASE_ANON_KEY to your .env file to enable Google authentication.');
     }
   };
 

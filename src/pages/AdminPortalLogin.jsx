@@ -27,7 +27,7 @@ function writeLock(s) {
 }
 
 export default function AdminPortalLogin() {
-  const { login, isAdmin, isAuthenticated, logout } = useAuth();
+  const { login, isAdmin, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -100,6 +100,7 @@ export default function AdminPortalLogin() {
   return (
     <AuthLayout
       icon={ShieldCheck}
+      logo={null}
       title="Restricted Admin Gateway"
       subtitle="Authorized management access only"
       footer={
@@ -131,7 +132,7 @@ export default function AdminPortalLogin() {
               type="email"
               autoComplete="email"
               autoFocus
-              placeholder="admin@sourcednexus.com"
+              placeholder="sourcednexus@gmail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="pl-10 h-12"

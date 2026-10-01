@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Truck, ChevronLeft, X, ZoomIn } from "lucide-react";
+import { Truck, ChevronLeft, X, ZoomIn, Heart, ShoppingBag, Check, Plus, Minus, MessageCircle, Send } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
-import { buildWhatsAppUrl, productInquiryMessage, WHATSAPP_DISPLAY } from "@/lib/whatsapp";
+import { buildWhatsAppUrl, buildCartInquiryWhatsAppMessage, WHATSAPP_DISPLAY } from "@/lib/whatsapp";
+import { formatKwachaPrice } from "@/lib/utils";
+import { recordProductView } from "@/lib/recommendations";
+import { useCart } from "@/lib/CartContext";
+import { toast } from "@/components/ui/use-toast";
 import ScrollReveal from "@/components/site/ScrollReveal";
 import ShareBar from "@/components/site/ShareBar";
 import BrandedLoader from "@/components/BrandedLoader";
@@ -17,6 +21,21 @@ export default function ProductDetail() {
   const [activeImg, setActiveImg] = useState(0);
   const [lightbox, setLightbox] = useState(false);
 
+  // Cart & Options State
+  const [selectedSize, setSelectedSize] = useState(null);
+  const [selectedColor, setSelectedColor] = useState(null);
+  const [quantity, setQuantity] = useState(1);
+  const [specifications, setSpecifications] = useState("");
+
+  const {
+    addToCart,
+    removeFromCart,
+    isInCart,
+    toggleWishlist,
+    isInWishlist,
+    openInquiryModal,
+  } = useCart();
+
   useEffect(() => {
     setLoading(true);
     async function loadProduct() {
@@ -25,13 +44,21 @@ export default function ProductDetail() {
           const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
           if (data && !error) {
             setProduct(data);
+            recordProductView(data);
             setActiveImg(0);
+            if (data.sizes?.length) setSelectedSize(data.sizes[0]);
+            if (data.colors?.length) setSelectedColor(data.colors[0]);
             setLoading(false);
             return;
           }
         }
         const bProduct = await base44.entities.Product.get(id);
         setProduct(bProduct);
+        if (bProduct) {
+          recordProductView(bProduct);
+          if (bProduct.sizes?.length) setSelectedSize(bProduct.sizes[0]);
+          if (bProduct.colors?.length) setSelectedColor(bProduct.colors[0]);
+        }
         setActiveImg(0);
       } catch (err) {
         console.error("Failed to load product details:", err);
@@ -76,6 +103,77 @@ export default function ProductDetail() {
 
   const images = product.images?.length ? product.images : [];
   const status = product.status || "available";
+  const exactSelectedImage = images[activeImg] || (images.length > 0 ? images[0] : null);
+  const inCart = isInCart(product.id);
+  const inWishlist = isInWishlist(product.id);
+
+  const handleWishlistToggle = () => {
+    const isSaved = toggleWishlist(product);
+    toast({
+      title: isSaved ? "Saved to Wishlist" : "Removed from Wishlist",
+      description: isSaved ? `${product.name} saved to your favorites.` : `${product.name} removed from your favorites.`,
+    });
+  };
+
+  const handleAddToCart = () => {
+    addToCart(product, {
+      quantity,
+      selectedSize,
+      selectedColor,
+      specifications,
+      selectedImage: exactSelectedImage,
+      openDrawer: true,
+    });
+    toast({
+      title: "Added to Inquiry Cart",
+      description: `${quantity}x ${product.name} added to your inquiry list.`,
+    });
+  };
+
+  const handleRemoveFromCart = () => {
+    removeFromCart(product.id);
+    toast({
+      title: "Removed from Cart",
+      description: `${product.name} removed from your inquiry cart.`,
+    });
+  };
+
+  const handleDirectQuote = () => {
+    // Open inquiry modal specifically for this item and selected options
+    const singleItem = {
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      price: product.price || "Price on Request",
+      image: exactSelectedImage,
+      quantity,
+      selectedSize,
+      selectedColor,
+      specifications,
+    };
+    openInquiryModal([singleItem]);
+  };
+
+  const handleDirectWhatsApp = () => {
+    const message = buildCartInquiryWhatsAppMessage({
+      items: [
+        {
+          id: product.id,
+          name: product.name,
+          category: product.category,
+          image: exactSelectedImage,
+          quantity,
+          selectedSize,
+          selectedColor,
+          specifications,
+        },
+      ],
+      inquiryType: status === "preorder" ? "preorder" : "quote_request",
+      customerName: "",
+      specifications,
+    });
+    window.open(buildWhatsAppUrl(message), "_blank", "noopener,noreferrer");
+  };
 
   return (
     <div className="pt-20">
@@ -94,7 +192,7 @@ export default function ProductDetail() {
                   alt={product.name}
                   fetchPriority="high"
                   decoding="async"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs tracking-wide-2">NO IMAGE</div>
@@ -111,7 +209,9 @@ export default function ProductDetail() {
                   <button
                     key={i}
                     onClick={() => setActiveImg(i)}
-                    className={`flex-shrink-0 w-20 aspect-[3/4] overflow-hidden border ${i === activeImg ? "border-foreground" : "border-border"}`}
+                    className={`flex-shrink-0 w-20 aspect-[3/4] overflow-hidden border transition-all ${
+                      i === activeImg ? "border-[#C5A059] ring-1 ring-[#C5A059]" : "border-border opacity-70 hover:opacity-100"
+                    }`}
                   >
                     <img src={img} alt="" className="w-full h-full object-cover" />
                   </button>
@@ -123,9 +223,22 @@ export default function ProductDetail() {
           {/* Info */}
           <div>
             <ScrollReveal>
-              <p className="text-[11px] tracking-luxe uppercase text-muted-foreground">{product.category}</p>
-              <h1 className="font-display text-4xl md:text-5xl mt-3 leading-tight">{product.name}</h1>
-              <p className="text-2xl font-display mt-4">{product.price || "Price on request"}</p>
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] tracking-luxe uppercase text-muted-foreground">{product.category}</p>
+                {/* Wishlist toggle button */}
+                <button
+                  type="button"
+                  onClick={handleWishlistToggle}
+                  aria-label={inWishlist ? "Remove from wishlist" : "Save to wishlist"}
+                  className="inline-flex items-center gap-2 text-xs uppercase tracking-wide-2 px-3 py-1.5 border border-border hover:border-foreground transition-all"
+                >
+                  <Heart className={`w-4 h-4 ${inWishlist ? "fill-red-500 text-red-500" : "text-muted-foreground"}`} />
+                  <span className="text-[10px]">{inWishlist ? "In Wishlist" : "Save to Wishlist"}</span>
+                </button>
+              </div>
+
+              <h1 className="font-display text-4xl md:text-5xl leading-tight mt-3">{product.name}</h1>
+              <p className="text-2xl font-display mt-4 text-foreground">{formatKwachaPrice(product.price)}</p>
 
               <div className="flex items-center gap-3 mt-5">
                 <span className={`text-[10px] tracking-wide-2 uppercase px-3 py-1.5 ${
@@ -138,44 +251,133 @@ export default function ProductDetail() {
               </div>
 
               {product.description && (
-                <div className="mt-8 pt-8 border-t border-border">
+                <div className="mt-8 pt-6 border-t border-border">
                   <p className="text-sm font-light leading-relaxed text-foreground/80 whitespace-pre-line">{product.description}</p>
                 </div>
               )}
 
+              {/* Sizes Selection */}
               {product.sizes?.length > 0 && (
-                <div className="mt-8">
-                  <p className="text-[11px] tracking-wide-2 uppercase text-muted-foreground mb-3">Available Sizes</p>
+                <div className="mt-7">
+                  <p className="text-[11px] tracking-wide-2 uppercase text-muted-foreground mb-2.5">
+                    Select Size: <span className="text-foreground font-semibold">{selectedSize || "Select"}</span>
+                  </p>
                   <div className="flex flex-wrap gap-2">
                     {product.sizes.map((s) => (
-                      <span key={s} className="min-w-10 text-center text-xs border border-border px-3 py-2">{s}</span>
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setSelectedSize(s)}
+                        className={`min-w-10 text-center text-xs px-3.5 py-2 transition-all border ${
+                          selectedSize === s
+                            ? "border-[#C5A059] bg-[#C5A059]/10 text-foreground font-medium"
+                            : "border-border text-muted-foreground hover:border-foreground"
+                        }`}
+                      >
+                        {s}
+                      </button>
                     ))}
                   </div>
                 </div>
               )}
 
+              {/* Colors Selection */}
               {product.colors?.length > 0 && (
                 <div className="mt-6">
-                  <p className="text-[11px] tracking-wide-2 uppercase text-muted-foreground mb-3">Available Colors</p>
+                  <p className="text-[11px] tracking-wide-2 uppercase text-muted-foreground mb-2.5">
+                    Select Color: <span className="text-foreground font-semibold">{selectedColor || "Select"}</span>
+                  </p>
                   <div className="flex flex-wrap gap-2">
                     {product.colors.map((c) => (
-                      <span key={c} className="text-xs border border-border px-3 py-2">{c}</span>
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setSelectedColor(c)}
+                        className={`text-xs px-3.5 py-2 transition-all border ${
+                          selectedColor === c
+                            ? "border-[#C5A059] bg-[#C5A059]/10 text-foreground font-medium"
+                            : "border-border text-muted-foreground hover:border-foreground"
+                        }`}
+                      >
+                        {c}
+                      </button>
                     ))}
                   </div>
                 </div>
               )}
 
-              <div className="mt-10 pt-8 border-t border-border">
-                <a
-                  href={buildWhatsAppUrl(productInquiryMessage(product.name))}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full text-center bg-[#1f7a4c] text-white py-4 text-[11px] tracking-wide-2 uppercase hover:bg-[#165c39] transition-colors"
+              {/* Quantity Stepper */}
+              <div className="mt-6 pt-6 border-t border-border flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] tracking-wide-2 uppercase text-muted-foreground block">
+                    Quantity
+                  </span>
+                  <span className="text-[10px] text-zinc-500">Concierge quota</span>
+                </div>
+                <div className="flex items-center border border-border bg-background">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    aria-label="Decrease quantity"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="w-10 text-center text-sm font-mono font-medium">{quantity}</span>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => q + 1)}
+                    className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    aria-label="Increase quantity"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Action Buttons: Add/Remove Cart, Request Quote, WhatsApp */}
+              <div className="mt-8 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Cart Button */}
+                  {inCart ? (
+                    <button
+                      type="button"
+                      onClick={handleRemoveFromCart}
+                      className="w-full border border-red-500/40 text-red-400 hover:bg-red-500/10 py-3.5 text-[11px] tracking-wide-2 uppercase transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Check className="w-4 h-4" /> Remove from Cart
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleAddToCart}
+                      className="w-full bg-[#C5A059] hover:bg-[#b08e4d] text-black py-3.5 text-[11px] tracking-wide-2 uppercase font-medium transition-colors flex items-center justify-center gap-2"
+                    >
+                      <ShoppingBag className="w-4 h-4" /> Add to Inquiry Cart
+                    </button>
+                  )}
+
+                  {/* Direct Send Inquiry / Quote Button */}
+                  <button
+                    type="button"
+                    onClick={handleDirectQuote}
+                    className="w-full border border-foreground hover:bg-foreground hover:text-background text-foreground py-3.5 text-[11px] tracking-wide-2 uppercase font-medium transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Send className="w-4 h-4" /> Request a Quote
+                  </button>
+                </div>
+
+                {/* WhatsApp Button */}
+                <button
+                  type="button"
+                  onClick={handleDirectWhatsApp}
+                  className="w-full bg-[#1f7a4c] hover:bg-[#165c39] text-white py-3.5 text-[11px] tracking-wide-2 uppercase font-medium transition-colors flex items-center justify-center gap-2"
                 >
-                  Order on WhatsApp
-                </a>
-                <p className="text-center text-[11px] tracking-wide-2 uppercase text-muted-foreground mt-4">
-                  WhatsApp / Call: {WHATSAPP_DISPLAY}
+                  <MessageCircle className="w-4 h-4" /> Inquire via WhatsApp
+                </button>
+
+                <p className="text-center text-[10px] tracking-wide-2 uppercase text-muted-foreground mt-2">
+                  Official WhatsApp: {WHATSAPP_DISPLAY} • Lusaka Concierge
                 </p>
               </div>
 

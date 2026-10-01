@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, Eye, EyeOff, X, Upload, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { isSupabaseConfigured, supabase, uploadImageToSupabase } from "@/lib/supabase";
+import { formatKwachaPrice } from "@/lib/utils";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -234,7 +235,7 @@ export default function AdminProducts() {
                 </th>
                 <th className="text-left px-4 py-3 font-normal">Product</th>
                 <th className="text-left px-4 py-3 font-normal">Category</th>
-                <th className="text-left px-4 py-3 font-normal">Price</th>
+                <th className="text-left px-4 py-3 font-normal">Price (Kwacha)</th>
                 <th className="text-left px-4 py-3 font-normal">Status</th>
                 <th className="text-right px-4 py-3 font-normal">Actions</th>
               </tr>
@@ -254,7 +255,7 @@ export default function AdminProducts() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{p.category}</td>
-                  <td className="px-4 py-3">{p.price || "—"}</td>
+                  <td className="px-4 py-3">{formatKwachaPrice(p.price)}</td>
                   <td className="px-4 py-3">
                     <span className={`text-[10px] tracking-wide-2 uppercase px-2 py-1 ${
                       p.status === "available" ? "bg-foreground text-background" :
@@ -288,7 +289,7 @@ export default function AdminProducts() {
             <form onSubmit={save} className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
               <div className="grid sm:grid-cols-2 gap-4">
                 <In label="Name *"><input required value={form.name} onChange={(e) => update("name", e.target.value)} className={inp} /></In>
-                <In label="Price (optional)"><input value={form.price} onChange={(e) => update("price", e.target.value)} placeholder="e.g. K350 — leave blank for 'Price on request'" className={inp} /></In>
+                <In label="Price in Kwacha (optional)"><input value={form.price} onChange={(e) => update("price", e.target.value)} placeholder="e.g. K350 — leave blank for 'Price on request'" className={inp} /></In>
                 <In label="Category">
                   <select value={form.category} onChange={(e) => update("category", e.target.value)} className={inp}>
                     {catOptions.map((c) => <option key={c}>{c}</option>)}

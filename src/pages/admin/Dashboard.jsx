@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Tags, ClipboardList, Package, Clock } from "lucide-react";
+import { Tags, ClipboardList, Package, Clock, MessageSquareQuote } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 export default function Dashboard() {
   const [products, setProducts] = useState([]);
   const [preorders, setPreorders] = useState([]);
+  const [inquiries, setInquiries] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -14,14 +15,16 @@ export default function Dashboard() {
     async function loadStats() {
       try {
         if (isSupabaseConfigured && supabase) {
-          const [p, po, c] = await Promise.all([
+          const [p, po, c, inq] = await Promise.all([
             supabase.from("products").select("*").order("created_at", { ascending: false }).limit(200),
             supabase.from("preorders").select("*").limit(200),
             supabase.from("categories").select("*").limit(100),
+            supabase.from("customer_inquiries").select("*").limit(200).catch(() => ({ data: [] })),
           ]);
           setProducts(p.data || []);
           setPreorders(po.data || []);
           setCategories(c.data || []);
+          setInquiries(inq?.data || []);
           return;
         }
 
@@ -44,20 +47,22 @@ export default function Dashboard() {
 
   const byCategory = {};
   products.forEach((p) => { byCategory[p.category] = (byCategory[p.category] || 0) + 1; });
+  const pendingInquiries = inquiries.filter((i) => i.status === "Pending").length;
   const newPreorders = preorders.filter((p) => p.status === "new").length;
   const recent = products.slice(0, 5);
 
   const stats = [
+    { label: "Customer Inquiries", value: inquiries.length, icon: MessageSquareQuote, to: "/admin/inquiries" },
+    { label: "Pending Quotes", value: pendingInquiries, icon: Clock, to: "/admin/inquiries" },
     { label: "Total Products", value: products.length, icon: Package, to: "/admin/products" },
-    { label: "Categories", value: categories.length, icon: Tags, to: "/admin/categories" },
     { label: "Pre-Orders", value: preorders.length, icon: ClipboardList, to: "/admin/preorders" },
-    { label: "New Requests", value: newPreorders, icon: Clock, to: "/admin/preorders" },
   ];
 
   if (loading) return <div className="p-10 text-center text-muted-foreground text-sm tracking-wide-2 uppercase">Loading dashboard…</div>;
 
   return (
     <div className="p-6 md:p-10 max-w-6xl">
+
       <h1 className="font-display text-4xl md:text-5xl">Dashboard</h1>
       <p className="text-sm text-muted-foreground mt-2">Welcome back. Here's your catalog at a glance.</p>
 

@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate, Navigate, NavLink } from "react-router-dom";
-import { LayoutDashboard, Shirt, Tags, ClipboardList, ExternalLink, LogOut, Menu, X } from "lucide-react";
+import { LayoutDashboard, Shirt, Tags, ClipboardList, ExternalLink, LogOut, Menu, X, MessageSquareQuote } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { ADMIN_EMAIL } from "@/lib/adminAccess";
 
 const NAV = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/admin/inquiries", label: "Customer Inquiries", icon: MessageSquareQuote },
   { to: "/admin/products", label: "Products", icon: Shirt },
   { to: "/admin/categories", label: "Categories", icon: Tags },
   { to: "/admin/preorders", label: "Pre-Orders", icon: ClipboardList },
 ];
+
 
 import BrandedLoader from "@/components/BrandedLoader";
 

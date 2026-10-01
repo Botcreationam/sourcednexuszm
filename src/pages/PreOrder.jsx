@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Camera, Send, CheckCircle2, Lock, ShieldCheck, MessageCircle, AlertCircle } from "lucide-react";
+import { Camera, Send, CheckCircle2, Lock, ShieldCheck, MessageCircle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { buildWhatsAppUrl, photoSourcingMessage, preorderNotificationMessage, WHATSAPP_DISPLAY } from "@/lib/whatsapp";
 import ScrollReveal from "@/components/site/ScrollReveal";
 import { toast } from "@/components/ui/use-toast";
-import { isSupabaseConfigured, validateImageFile, uploadSecurePreorderImage, uploadImageToSupabase, createSupabasePreorder } from "@/lib/supabase";
+import { isSupabaseConfigured, validateImageFile, uploadSecurePreorderImage, createSupabasePreorder } from "@/lib/supabase";
 import { useAuth } from "@/lib/AuthContext";
+
 
 const CATEGORIES = [
   "Electronics",
@@ -186,7 +187,7 @@ export default function PreOrder() {
                   <ShieldCheck className="w-4 h-4 text-[#1f7a4c]" />
                   <span>Authenticated as <strong className="text-foreground font-medium">{user.email}</strong></span>
                 </div>
-                <span className="text-[10px] tracking-wide-2 uppercase text-muted-foreground">Secure Session</span>
+                <span className="text-[10px] tracking-wide-2 uppercase text-muted-foreground">Prices in Kwacha (K / ZMW)</span>
               </div>
 
               <div className="grid sm:grid-cols-2 gap-5">

@@ -1,13 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const getEnv = (key) => {
+  if (typeof window !== 'undefined' && window.__ENV__ && window.__ENV__[key]) {
+    return window.__ENV__[key];
+  }
+  return import.meta.env[key] || '';
+};
 
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+const supabaseUrl = getEnv('VITE_SUPABASE_URL') || 'https://zprzxqdcqeywopwxouzu.supabase.co';
+const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY');
+
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey && supabaseAnonKey.trim().length > 0);
 
 // Supabase client instance (or null if not yet configured)
 export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey, {
+  ? createClient(supabaseUrl, supabaseAnonKey.trim(), {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
@@ -265,3 +272,158 @@ export async function createSupabasePreorder(formData, user = null) {
   if (error) throw error;
   return data;
 }
+
+/**
+ * Submit a customer quote request / product inquiry to Supabase
+ */
+export async function submitCustomerInquiry(inquiryData, user = null) {
+  if (!supabase) {
+    // Submit via backend API endpoint if supabase is not direct
+    const response = await fetch('/api/inquiries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...inquiryData, user_id: user?.id || null }),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to submit inquiry.');
+    }
+    return response.json();
+  }
+
+  const payload = {
+    user_id: user?.id || null,
+    inquiry_type: inquiryData.inquiry_type || 'quote_request',
+    customer_name: inquiryData.customer_name?.trim(),
+    contact_number: inquiryData.contact_number?.trim(),
+    email: inquiryData.email?.trim() || user?.email || null,
+    items: Array.isArray(inquiryData.items) ? inquiryData.items : [],
+    total_items: inquiryData.items?.length || 1,
+    specifications: inquiryData.specifications?.trim() || null,
+    additional_instructions: inquiryData.additional_instructions?.trim() || null,
+    status: 'Pending',
+    source: inquiryData.source || 'website',
+  };
+
+  const { data, error } = await supabase
+    .from('customer_inquiries')
+    .insert([payload])
+    .select()
+    .single();
+
+  if (error) {
+    // If the table doesn't exist yet, attempt backend fallback API
+    console.warn('Supabase customer_inquiries insert error, attempting backend API fallback:', error);
+    try {
+      const resp = await fetch('/api/inquiries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (resp.ok) return await resp.json();
+    } catch {}
+    throw error;
+  }
+  return data;
+}
+
+/**
+ * Fetch customer cart and wishlist from user_profiles table in Supabase
+ */
+export async function getUserCartAndWishlist(userId) {
+  if (!supabase || !userId) return { cart: [], wishlist: [] };
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('cart, wishlist')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error || !data) return { cart: [], wishlist: [] };
+    return {
+      cart: Array.isArray(data.cart) ? data.cart : [],
+      wishlist: Array.isArray(data.wishlist) ? data.wishlist : [],
+    };
+  } catch (err) {
+    console.warn('Error fetching user cart/wishlist:', err);
+    return { cart: [], wishlist: [] };
+  }
+}
+
+/**
+ * Persist customer cart and wishlist to user_profiles table in Supabase
+ */
+export async function saveUserCartAndWishlist(userId, cart = [], wishlist = []) {
+  if (!supabase || !userId) return;
+  try {
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({
+        cart: Array.isArray(cart) ? cart : [],
+        wishlist: Array.isArray(wishlist) ? wishlist : [],
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+
+    if (error) {
+      console.warn('Could not sync cart/wishlist to user_profiles:', error);
+    }
+  } catch (err) {
+    console.warn('Error saving user cart/wishlist:', err);
+  }
+}
+
+/**
+ * Fetch customer inquiries for Admin Dashboard
+ */
+export async function getCustomerInquiries({ limit = 100, status } = {}) {
+  if (!supabase) return [];
+  try {
+    let query = supabase
+      .from('customer_inquiries')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (status && status !== 'all') {
+      query = query.eq('status', status);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error('Failed to get customer inquiries:', err);
+    return [];
+  }
+}
+
+/**
+ * Update an inquiry status in Supabase (Admin)
+ */
+export async function updateCustomerInquiryStatus(inquiryId, status) {
+  if (!supabase) throw new Error('Supabase is not configured.');
+  const { data, error } = await supabase
+    .from('customer_inquiries')
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('id', inquiryId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Delete inquiries by ID array (Admin)
+ */
+export async function deleteCustomerInquiries(ids = []) {
+  if (!supabase || !ids.length) return;
+  const { error } = await supabase
+    .from('customer_inquiries')
+    .delete()
+    .in('id', ids);
+
+  if (error) throw error;
+}
+

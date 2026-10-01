@@ -1,13 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Camera, Truck, MessageSquare } from "lucide-react";
+import { ArrowRight, Camera, Truck, MessageSquare, Sparkles, SlidersHorizontal, Compass } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { isSupabaseConfigured, getSupabaseProducts } from "@/lib/supabase";
+import { useAuth } from "@/lib/AuthContext";
+import { rankProductsForYou, getStoredInterests } from "@/lib/recommendations";
 import { buildWhatsAppUrl, photoSourcingMessage, WHATSAPP_DISPLAY } from "@/lib/whatsapp";
 import ScrollReveal from "@/components/site/ScrollReveal";
 import HorizontalProductSection from "@/components/site/HorizontalProductSection";
 import SectionHeading from "@/components/site/SectionHeading";
 import BrandedLoader from "@/components/BrandedLoader";
 import PhotoChoiceModal from "@/components/site/PhotoChoiceModal";
+import OnboardingModal from "@/components/site/OnboardingModal";
+import PreferencesModal from "@/components/site/PreferencesModal";
 
 const HERO_IMAGES = [
   "https://media.base44.com/images/public/6abc6a8a4b6c9d175aa35566/d51d95ee0_IMG_7842.jpeg",
@@ -26,19 +31,61 @@ const CATEGORIES = [
 ];
 
 export default function Home() {
+  const { user } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
+  const [interestsModalOpen, setInterestsModalOpen] = useState(false);
+  const [preferencesModalOpen, setPreferencesModalOpen] = useState(false);
+  const [recRefreshKey, setRecRefreshKey] = useState(0);
 
   useEffect(() => {
-    base44.entities.Product.list("-created_date", 100)
-      .then(setProducts)
-      .finally(() => setLoading(false));
+    async function loadProducts() {
+      try {
+        if (isSupabaseConfigured) {
+          const sp = await getSupabaseProducts();
+          if (sp && sp.length > 0) {
+            setProducts(sp);
+            setLoading(false);
+            return;
+          }
+        }
+        const bProducts = await base44.entities.Product.list("-created_date", 100);
+        setProducts(bProducts || []);
+      } catch (err) {
+        console.error("Failed to load products on home:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadProducts();
   }, []);
+
+  // Listen for user preference updates or resets
+  useEffect(() => {
+    const handleUpdate = () => setRecRefreshKey((k) => k + 1);
+    window.addEventListener("sn:interests_updated", handleUpdate);
+    window.addEventListener("sn:likes_updated", handleUpdate);
+    window.addEventListener("sn:activity_updated", handleUpdate);
+    window.addEventListener("sn:personalization_reset", handleUpdate);
+    return () => {
+      window.removeEventListener("sn:interests_updated", handleUpdate);
+      window.removeEventListener("sn:likes_updated", handleUpdate);
+      window.removeEventListener("sn:activity_updated", handleUpdate);
+      window.removeEventListener("sn:personalization_reset", handleUpdate);
+    };
+  }, []);
+
+  // Compute TikTok-style FYP personalized ranking and discovery sets
+  const { forYouSection, discoverySection, hasPersonalization } = useMemo(() => {
+    const currentInterests = user?.user_metadata?.interests || getStoredInterests();
+    return rankProductsForYou(products, { interests: currentInterests });
+  }, [products, user, recRefreshKey]);
 
   const newArrivals = products.filter((p) => p.is_new_arrival).slice(0, 12);
   const popular = products.filter((p) => p.is_popular).slice(0, 12);
   const byCategory = (cat) => products.filter((p) => p.category === cat).slice(0, 12);
+
 
   return (
     <div>
@@ -169,6 +216,54 @@ export default function Home() {
         <BrandedLoader fullScreen={false} text="Curating Collection..." />
       ) : (
         <>
+          {/* TIKTOK FYP-STYLE PERSONALIZED FEED */}
+          {forYouSection.length > 0 && (
+            <HorizontalProductSection
+              eyebrow={hasPersonalization ? "Personalized For You" : "Recommended Feed"}
+              title="Curated For You"
+              products={forYouSection}
+              viewAllTo="/catalog"
+              action={
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setInterestsModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 text-[10px] tracking-wide-2 uppercase border border-foreground/30 px-3 py-1.5 hover:bg-foreground hover:text-background transition-colors"
+                  >
+                    <Sparkles className="w-3 h-3 text-[#C5A059]" />
+                    <span>Tune Interests</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreferencesModalOpen(true)}
+                    aria-label="Personalization & Privacy Preferences"
+                    className="p-1.5 border border-foreground/30 hover:bg-foreground hover:text-background transition-colors"
+                    title="Privacy & Personalization Settings"
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              }
+            />
+          )}
+
+          {/* DISCOVERY MECHANISM: OUTSIDE YOUR BUBBLE */}
+          {discoverySection.length > 0 && (
+            <div className="bg-muted/15 border-y border-border/50">
+              <HorizontalProductSection
+                eyebrow="Discovery Horizon"
+                title="Explore Outside Your Bubble"
+                products={discoverySection}
+                viewAllTo="/catalog"
+                action={
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[10px] tracking-wide-2 uppercase text-muted-foreground">
+                    <Compass className="w-3.5 h-3.5 text-primary" /> Serendipity picks
+                  </span>
+                }
+              />
+            </div>
+          )}
+
           {newArrivals.length > 0 && (
             <HorizontalProductSection eyebrow="Just In" title="New Arrivals" products={newArrivals} viewAllTo="/catalog" />
           )}
@@ -222,6 +317,20 @@ export default function Home() {
 
       {/* Choice Modal for Photo Sourcing */}
       <PhotoChoiceModal open={photoModalOpen} onClose={() => setPhotoModalOpen(false)} />
+
+      {/* Shopping Interests Onboarding & Customization Modal */}
+      <OnboardingModal
+        open={interestsModalOpen}
+        onClose={() => setInterestsModalOpen(false)}
+        isEditMode={true}
+      />
+
+      {/* Privacy and Personalization Preferences Modal */}
+      <PreferencesModal
+        open={preferencesModalOpen}
+        onClose={() => setPreferencesModalOpen(false)}
+        onOpenInterests={() => setInterestsModalOpen(true)}
+      />
     </div>
   );
 }
