@@ -104,14 +104,14 @@ export const AuthProvider = ({ children }) => {
 
             // Handle redirect if returning from OAuth
             try {
-              if (_event === 'SIGNED_IN' && isAdm) {
-                window.location.href = '/secure/nexuspanel-trust';
-                return;
-              }
               const pendingReturn = sessionStorage.getItem('sn_oauth_return_to');
-              if (pendingReturn && (window.location.pathname === '/login' || window.location.pathname === '/register')) {
+              if (pendingReturn) {
                 sessionStorage.removeItem('sn_oauth_return_to');
-                window.location.href = pendingReturn;
+                if (isAdm) {
+                  window.location.href = '/secure/nexuspanel-trust';
+                } else {
+                  window.location.href = pendingReturn;
+                }
               }
             } catch {}
           } else {
