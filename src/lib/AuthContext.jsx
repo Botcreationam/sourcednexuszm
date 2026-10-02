@@ -104,6 +104,10 @@ export const AuthProvider = ({ children }) => {
 
             // Handle redirect if returning from OAuth
             try {
+              if (_event === 'SIGNED_IN' && isAdm) {
+                window.location.href = '/secure/nexuspanel-trust';
+                return;
+              }
               const pendingReturn = sessionStorage.getItem('sn_oauth_return_to');
               if (pendingReturn && (window.location.pathname === '/login' || window.location.pathname === '/register')) {
                 sessionStorage.removeItem('sn_oauth_return_to');
@@ -170,7 +174,7 @@ export const AuthProvider = ({ children }) => {
       if (error) throw error;
       const isAdm = await checkDatabaseAdminRole(data.user?.id, data.user?.email);
       setIsAdmin(isAdm);
-      return data;
+      return { ...data, isAdmin: isAdm };
     } else {
       const result = await base44.auth.loginViaEmailPassword(email.trim(), password);
       return result;

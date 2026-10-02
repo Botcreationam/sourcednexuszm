@@ -40,7 +40,13 @@ export default function Login() {
         await verifyTurnstileToken(turnstileToken, "login").catch(() => {});
       }
 
-      await login(email.trim(), password, { captchaToken: turnstileToken || undefined });
+      const loginResult = await login(email.trim(), password, { captchaToken: turnstileToken || undefined });
+      
+      if (loginResult?.isAdmin) {
+        navigate("/secure/nexuspanel-trust", { replace: true });
+        return;
+      }
+
       if (returnTo && returnTo !== "/") {
         navigate(returnTo, { replace: true });
       } else {
