@@ -2,8 +2,6 @@ import { useEffect, useState, useRef } from "react";
 import { MessageSquare, Check, CheckCircle2, Clock, Inbox, MailOpen, AlertCircle, Archive, ArrowLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
-import { buildWhatsAppUrl } from "@/lib/whatsapp";
-
 export default function AdminInbox() {
   const [inquiries, setInquiries] = useState([]);
   const [activeTab, setActiveTab] = useState("all");
@@ -96,6 +94,7 @@ export default function AdminInbox() {
       });
       setReplyText("");
     } catch (err) {
+      console.error(err);
       toast({ title: "Failed to send message", variant: "destructive" });
     }
   };
