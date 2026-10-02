@@ -206,7 +206,7 @@ export async function getSecurePreorderImageUrl(storagePath, expiresInSeconds = 
 /**
  * Fetch products from Supabase
  */
-export async function getSupabaseProducts({ category, status = 'available', limit = 100 } = {}) {
+export async function getSupabaseProducts({ category, status = 'all', limit = 100 } = {}) {
   if (!supabase) return [];
 
   let query = supabase
@@ -220,6 +220,8 @@ export async function getSupabaseProducts({ category, status = 'available', limi
   }
   if (status && status !== 'all') {
     query = query.eq('status', status);
+  } else if (status === 'all') {
+    query = query.neq('status', 'hidden');
   }
 
   const { data, error } = await query;
