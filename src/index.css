@@ -133,7 +133,10 @@ html {
 
 /* Hide scrollbar for horizontal carousels */
 .no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar { -ms-overflow-style: none; }
+@supports (scrollbar-width: none) {
+  .no-scrollbar { scrollbar-width: none; }
+}
 
 /* Reveal animation */
 @keyframes fade-up {
