@@ -6,13 +6,13 @@ import { ADMIN_EMAIL } from "@/lib/adminAccess";
 import { ModeToggle } from "@/components/ModeToggle";
 
 const NAV = [
-  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/admin/inbox", label: "Inbox", icon: Inbox },
-  { to: "/admin/inquiries", label: "Customer Inquiries", icon: MessageSquareQuote },
-  { to: "/admin/products", label: "Products", icon: Shirt },
-  { to: "/admin/categories", label: "Categories", icon: Tags },
-  { to: "/admin/preorders", label: "Pre-Orders", icon: ClipboardList },
-  { to: "/admin/moderation", label: "Moderation", icon: ShieldAlert },
+  { to: "/secure/nexuspanel-trust", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/secure/nexuspanel-trust/inbox", label: "Inbox", icon: Inbox },
+  { to: "/secure/nexuspanel-trust/inquiries", label: "Customer Inquiries", icon: MessageSquareQuote },
+  { to: "/secure/nexuspanel-trust/products", label: "Products", icon: Shirt },
+  { to: "/secure/nexuspanel-trust/categories", label: "Categories", icon: Tags },
+  { to: "/secure/nexuspanel-trust/preorders", label: "Pre-Orders", icon: ClipboardList },
+  { to: "/secure/nexuspanel-trust/moderation", label: "Moderation", icon: ShieldAlert },
 ];
 
 

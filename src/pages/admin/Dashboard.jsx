@@ -52,10 +52,10 @@ export default function Dashboard() {
   const recent = products.slice(0, 5);
 
   const stats = [
-    { label: "Customer Inquiries", value: inquiries.length, icon: MessageSquareQuote, to: "/admin/inquiries" },
-    { label: "Pending Quotes", value: pendingInquiries, icon: Clock, to: "/admin/inquiries" },
-    { label: "Total Products", value: products.length, icon: Package, to: "/admin/products" },
-    { label: "Pre-Orders", value: preorders.length, icon: ClipboardList, to: "/admin/preorders" },
+    { label: "Customer Inquiries", value: inquiries.length, icon: MessageSquareQuote, to: "/secure/nexuspanel-trust/inquiries" },
+    { label: "Pending Quotes", value: pendingInquiries, icon: Clock, to: "/secure/nexuspanel-trust/inquiries" },
+    { label: "Total Products", value: products.length, icon: Package, to: "/secure/nexuspanel-trust/products" },
+    { label: "Pre-Orders", value: preorders.length, icon: ClipboardList, to: "/secure/nexuspanel-trust/preorders" },
   ];
 
   if (loading) return <div className="p-10 text-center text-muted-foreground text-sm tracking-wide-2 uppercase">Loading dashboard…</div>;
@@ -113,7 +113,7 @@ export default function Dashboard() {
                     <p className="text-sm truncate">{p.name}</p>
                     <p className="text-[11px] tracking-wide-2 uppercase text-muted-foreground">{p.category} • {p.price}</p>
                   </div>
-                  <Link to="/admin/products" className="text-[10px] tracking-wide-2 uppercase border-b border-foreground pb-0.5">Edit</Link>
+                  <Link to="/secure/nexuspanel-trust/products" className="text-[10px] tracking-wide-2 uppercase border-b border-foreground pb-0.5">Edit</Link>
                 </div>
               ))}
             </div>

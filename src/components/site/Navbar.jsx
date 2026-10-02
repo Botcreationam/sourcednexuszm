@@ -117,14 +117,7 @@ export default function Navbar() {
 
               {isAuthenticated ? (
                 <div className="flex items-center gap-3">
-                  {isAdmin && (
-                    <Link
-                      to="/admin"
-                      className="text-[10px] tracking-wide-2 uppercase bg-foreground text-background px-3 py-1.5 hover:opacity-85 transition-opacity"
-                    >
-                      Admin Panel
-                    </Link>
-                  )}
+
                   {isEmailUnverified && (
                     <span
                       title="Please check your email inbox to verify your account"
@@ -301,11 +294,7 @@ export default function Navbar() {
                         Unverified Email
                       </span>
                     )}
-                    {isAdmin && (
-                      <Link to="/admin" onClick={() => setOpen(false)} className="text-[10px] tracking-wide-2 uppercase text-[#C5A059] underline inline-block">
-                        Admin Panel →
-                      </Link>
-                    )}
+
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

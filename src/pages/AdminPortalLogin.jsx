@@ -44,7 +44,7 @@ export default function AdminPortalLogin() {
   // If already authenticated and verified admin, redirect to /admin
   useEffect(() => {
     if (isAuthenticated && isAdmin) {
-      navigate("/admin", { replace: true });
+      navigate("/secure/nexuspanel-trust", { replace: true });
     }
   }, [isAuthenticated, isAdmin, navigate]);
 
@@ -73,7 +73,7 @@ export default function AdminPortalLogin() {
         throw new Error("Invalid credentials");
       }
       
-      navigate("/admin", { replace: true });
+      navigate("/secure/nexuspanel-trust", { replace: true });
     } catch (err) {
       const cur = readLock();
       const attempts = cur.attempts + 1;

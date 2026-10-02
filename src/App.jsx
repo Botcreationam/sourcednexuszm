@@ -73,7 +73,7 @@ const AuthenticatedApp = () => {
       </Route>
 
       {/* Admin */}
-      <Route path="/admin" element={<AdminLayout />}>
+      <Route path="/secure/nexuspanel-trust" element={<AdminLayout />}>
         <Route index element={<Dashboard />} />
         <Route path="inbox" element={<AdminInbox />} />
         <Route path="inquiries" element={<AdminInquiries />} />
