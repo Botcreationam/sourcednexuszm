@@ -30,7 +30,7 @@ export default function AdminLayout() {
     return <BrandedLoader text="Verifying Portal Privileges..." />;
   }
   if (!isAuthenticated) {
-    return <Navigate to="/system-admin-portal" replace />;
+    return <Navigate to="/login" replace />;
   }
   if (!isAdmin) {
     return (
@@ -44,7 +44,7 @@ export default function AdminLayout() {
     );
   }
 
-  const doLogout = () => { logout(false); navigate("/system-admin-portal"); };
+  const doLogout = () => { logout(false); navigate("/login"); };
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">

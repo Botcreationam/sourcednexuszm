@@ -31,7 +31,7 @@ import AdminPreorders from './pages/admin/AdminPreorders';
 import AdminInquiries from './pages/admin/AdminInquiries';
 import AdminInbox from './pages/admin/AdminInbox';
 import AdminModeration from './pages/admin/AdminModeration';
-import AdminPortalLogin from './pages/AdminPortalLogin';
+
 import { CartProvider } from '@/lib/CartContext';
 
 import BrandedLoader from '@/components/BrandedLoader';
@@ -53,8 +53,6 @@ const AuthenticatedApp = () => {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
-      {/* Secure Non-Public Admin Portal Entry */}
-      <Route path="/system-admin-portal" element={<AdminPortalLogin />} />
 
       {/* Customer storefront */}
       <Route element={<SiteLayout />}>
