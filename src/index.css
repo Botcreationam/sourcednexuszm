@@ -116,6 +116,7 @@
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
+  @apply bg-background;
 }
 
 /* Custom selection */

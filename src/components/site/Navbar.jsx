@@ -271,17 +271,25 @@ export default function Navbar() {
               </button>
             ))}
             {isAuthenticated && (
-              <button
-                onClick={() => handleNav("/messages")}
-                className="text-left py-3 text-sm tracking-wide-2 uppercase border-b border-border/60 flex items-center justify-between text-[#C5A059]"
-              >
-                Messages
-                {unreadMessages > 0 && (
-                  <span className="bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                    {unreadMessages} New
-                  </span>
-                )}
-              </button>
+              <>
+                <button
+                  onClick={() => { setOpen(false); setNotificationsOpen(true); }}
+                  className="text-left py-3 text-sm tracking-wide-2 uppercase border-b border-border/60 flex items-center justify-between text-[#C5A059]"
+                >
+                  Notifications
+                </button>
+                <button
+                  onClick={() => handleNav("/messages")}
+                  className="text-left py-3 text-sm tracking-wide-2 uppercase border-b border-border/60 flex items-center justify-between text-[#C5A059]"
+                >
+                  Messages
+                  {unreadMessages > 0 && (
+                    <span className="bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                      {unreadMessages} New
+                    </span>
+                  )}
+                </button>
+              </>
             )}
             {isAuthenticated ? (
               <div className="pt-3 mt-2 border-t border-border space-y-3">
