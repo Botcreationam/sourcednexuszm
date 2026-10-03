@@ -20,7 +20,7 @@ const LINKS = [
 ];
 
 export default function Navbar() {
-  const { user, isAuthenticated, isAdmin } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { cartCount, wishlistCount, openCart, openWishlist } = useCart();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);

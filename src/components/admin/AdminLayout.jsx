@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate, Navigate, NavLink } from "react-router-dom";
 import { LayoutDashboard, Shirt, Tags, ClipboardList, ExternalLink, LogOut, Menu, X, MessageSquareQuote, ShieldAlert, Inbox } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
-import { ADMIN_EMAIL } from "@/lib/adminAccess";
 import { ModeToggle } from "@/components/ModeToggle";
 
 const NAV = [
