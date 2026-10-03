@@ -20,7 +20,11 @@ const emptyForm = {
   name: "", price: "", category: "", description: "",
   sizes: "", colors: "", status: "available",
   is_new_arrival: false, is_popular: false, delivery_info: "7–14 working days",
-  grades: [],
+  grades: [
+    { name: "First Grade", price: "", original_price: "", discount_percentage: "", stock_status: "In Stock" },
+    { name: "Second Grade", price: "", original_price: "", discount_percentage: "", stock_status: "In Stock" },
+    { name: "Third Grade", price: "", original_price: "", discount_percentage: "", stock_status: "In Stock" },
+  ],
 };
 
 export default function AdminProducts() {
@@ -77,7 +81,14 @@ export default function AdminProducts() {
       description: p.description || "", sizes: (p.sizes || []).join(", "), colors: (p.colors || []).join(", "),
       status: p.status || "available", is_new_arrival: !!p.is_new_arrival, is_popular: !!p.is_popular,
       delivery_info: p.delivery_info || "7–14 working days",
-      grades: p.grades || [],
+      grades: [
+        { name: "First Grade", price: "", original_price: "", discount_percentage: "", stock_status: "In Stock" },
+        { name: "Second Grade", price: "", original_price: "", discount_percentage: "", stock_status: "In Stock" },
+        { name: "Third Grade", price: "", original_price: "", discount_percentage: "", stock_status: "In Stock" },
+      ].map(def => {
+        const existing = p.grades?.find(g => g.name === def.name);
+        return existing || def;
+      }),
     });
     setImages(p.images || []);
     setModalOpen(true);
@@ -148,26 +159,12 @@ export default function AdminProducts() {
 
 
 
-  const addGrade = () => {
-    setForm(f => ({
-      ...f,
-      grades: [...f.grades, { name: "", price: "", original_price: "", stock_status: "In Stock" }]
-    }));
-  };
-
   const updateGrade = (index, field, value) => {
     setForm(f => {
       const newGrades = [...f.grades];
       newGrades[index] = { ...newGrades[index], [field]: value };
       return { ...f, grades: newGrades };
     });
-  };
-
-  const removeGrade = (index) => {
-    setForm(f => ({
-      ...f,
-      grades: f.grades.filter((_, i) => i !== index)
-    }));
   };
 
   const save = async (e) => {
@@ -179,6 +176,7 @@ export default function AdminProducts() {
       sizes: form.sizes.split(",").map((s) => s.trim()).filter(Boolean),
       colors: form.colors.split(",").map((s) => s.trim()).filter(Boolean),
       images,
+      grades: form.grades.filter(g => g.price && String(g.price).trim() !== ""),
     };
     try {
       if (isSupabaseConfigured) {
@@ -373,36 +371,30 @@ export default function AdminProducts() {
 
               {/* Grades Section */}
               <div className="border border-border p-4 bg-muted/20">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide-2">Product Grades</h3>
-                  <button type="button" onClick={addGrade} className="text-[10px] bg-foreground text-background px-3 py-1.5 uppercase tracking-wide-2 hover:opacity-85">
-                    + Add Grade
-                  </button>
+                <div className="mb-4">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide-2">Product Grades & Pricing</h3>
+                  <p className="text-xs text-muted-foreground mt-1">Leave the price blank for a grade if it's not applicable.</p>
                 </div>
-                {form.grades.length === 0 ? (
-                  <p className="text-xs text-muted-foreground italic">No grades added. Product will use the default price.</p>
-                ) : (
-                  <div className="space-y-4">
-                    {form.grades.map((grade, idx) => (
-                      <div key={idx} className="p-3 border border-border bg-background grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 relative">
-                        <button type="button" onClick={() => removeGrade(idx)} className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center hover:scale-110">
-                          <X className="w-3 h-3" />
-                        </button>
-                        <In label="Grade Name"><input value={grade.name} onChange={(e) => updateGrade(idx, "name", e.target.value)} placeholder="e.g. First Grade" className={inp} required /></In>
-                        <In label="Price (K)"><input value={grade.price} onChange={(e) => updateGrade(idx, "price", e.target.value)} placeholder="e.g. 450" className={inp} required /></In>
-                        <In label="Original Price (K)"><input value={grade.original_price} onChange={(e) => updateGrade(idx, "original_price", e.target.value)} placeholder="e.g. 500" className={inp} /></In>
-                        <In label="Stock Status">
-                          <select value={grade.stock_status} onChange={(e) => updateGrade(idx, "stock_status", e.target.value)} className={inp}>
-                            <option value="In Stock">In Stock</option>
-                            <option value="Low Stock">Low Stock</option>
-                            <option value="Out of Stock">Out of Stock</option>
-                            <option value="Available on Request">Available on Request</option>
-                          </select>
-                        </In>
+                <div className="space-y-4">
+                  {form.grades.map((grade, idx) => (
+                    <div key={idx} className="p-4 border border-border bg-background grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 relative">
+                      <div className="col-span-full mb-1">
+                        <span className="text-xs font-semibold uppercase tracking-wide-2 bg-foreground text-background px-2 py-1">{grade.name}</span>
                       </div>
-                    ))}
-                  </div>
-                )}
+                      <In label="Price (K)"><input value={grade.price} onChange={(e) => updateGrade(idx, "price", e.target.value)} placeholder="e.g. 450" className={inp} /></In>
+                      <In label="Original Price (K)"><input value={grade.original_price} onChange={(e) => updateGrade(idx, "original_price", e.target.value)} placeholder="e.g. 500" className={inp} /></In>
+                      <In label="Discount %"><input value={grade.discount_percentage} onChange={(e) => updateGrade(idx, "discount_percentage", e.target.value)} placeholder="e.g. 10%" className={inp} /></In>
+                      <In label="Stock Status">
+                        <select value={grade.stock_status} onChange={(e) => updateGrade(idx, "stock_status", e.target.value)} className={inp}>
+                          <option value="In Stock">In Stock</option>
+                          <option value="Low Stock">Low Stock</option>
+                          <option value="Out of Stock">Out of Stock</option>
+                          <option value="Available on Request">Available on Request</option>
+                        </select>
+                      </In>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="flex gap-6">

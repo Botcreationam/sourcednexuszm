@@ -46,10 +46,12 @@ export function buildCartInquiryWhatsAppMessage({
       `• Product ID: ${item.id || "N/A"}`,
       `• Quantity: ${item.quantity || 1}`,
       item.category ? `• Category: ${item.category}` : null,
+      item.selectedGrade ? `• Selected Grade: ${item.selectedGrade.name} (Price: ${item.selectedGrade.price})` : null,
       item.selectedSize ? `• Selected Size: ${item.selectedSize}` : null,
       item.selectedColor ? `• Selected Color: ${item.selectedColor}` : null,
       item.specifications ? `• Notes/Specs: ${item.specifications}` : null,
       item.image ? `• Exact Product Image Link:\n  ${item.image}` : "• Image: None provided",
+      `• Estimated Total: ${item.price ? (parseFloat(item.price.replace(/[^0-9.]/g, '')) * (item.quantity || 1)).toLocaleString() + " (based on selected price)" : "Price on Request"}`
     ].filter(Boolean);
     return parts.join("\n");
   }).join("\n\n");

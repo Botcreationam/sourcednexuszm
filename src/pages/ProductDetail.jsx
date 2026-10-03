@@ -127,14 +127,16 @@ export default function ProductDetail() {
 
   const calculateDiscount = (price, original) => {
     if (!price || !original) return null;
-    const p = parseFloat(price.replace(/[^0-9.]/g, ''));
-    const o = parseFloat(original.replace(/[^0-9.]/g, ''));
+    const p = parseFloat(price.toString().replace(/[^0-9.]/g, ''));
+    const o = parseFloat(original.toString().replace(/[^0-9.]/g, ''));
     if (p && o && o > p) {
       return Math.round(((o - p) / o) * 100);
     }
     return null;
   };
-  const discountPercent = calculateDiscount(currentPrice, originalPrice);
+  
+  const explicitDiscount = hasGrades && selectedGrade ? selectedGrade.discount_percentage : null;
+  const discountPercent = explicitDiscount || calculateDiscount(currentPrice, originalPrice);
 
   const handleWishlistToggle = () => {
     const isSaved = toggleWishlist(product);
@@ -283,7 +285,7 @@ export default function ProductDetail() {
               <div className="mt-4 flex flex-col gap-1">
                 {discountPercent && (
                   <span className="inline-block px-2.5 py-0.5 bg-green-500/10 text-green-600 font-medium text-xs rounded-full w-fit">
-                    {discountPercent}% OFF
+                    {String(discountPercent).includes('%') ? discountPercent : `${discountPercent}% OFF`}
                   </span>
                 )}
                 {originalPrice && (

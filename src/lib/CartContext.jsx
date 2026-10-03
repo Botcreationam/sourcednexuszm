@@ -114,19 +114,9 @@ export function CartProvider({ children }) {
     syncUserData();
   }, [isAuthenticated, user?.id]);
 
-  // 2. Persist cart changes locally and to DB (if logged in)
+  // 2. Persist cart & wishlist changes locally and to DB (if logged in)
   useEffect(() => {
     setLocalData(CART_STORAGE_KEY, cart);
-    if (isAuthenticated && user?.id && isInitialSyncDone.current) {
-      const timer = setTimeout(() => {
-        saveUserCartAndWishlist(user.id, cart, wishlist);
-      }, 800);
-      return () => clearTimeout(timer);
-    }
-  }, [cart, isAuthenticated, user?.id]);
-
-  // 3. Persist wishlist changes locally and to DB (if logged in)
-  useEffect(() => {
     setLocalData(WISHLIST_STORAGE_KEY, wishlist);
     if (isAuthenticated && user?.id && isInitialSyncDone.current) {
       const timer = setTimeout(() => {
@@ -134,7 +124,7 @@ export function CartProvider({ children }) {
       }, 800);
       return () => clearTimeout(timer);
     }
-  }, [wishlist, isAuthenticated, user?.id]);
+  }, [cart, wishlist, isAuthenticated, user?.id]);
 
   // --- Cart Operations ---
   const addToCart = useCallback((product, options = {}) => {
