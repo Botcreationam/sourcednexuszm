@@ -324,17 +324,18 @@ export default function Navbar() {
       </header>
 
       {/* Mobile Bottom Navigation */}
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-background border-t border-border flex justify-around items-center h-[60px] pb-safe">
+      <div className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-background border-t border-border flex items-center h-[60px] pb-safe relative">
         <button
           onClick={() => handleNav("/")}
-          className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground hover:text-foreground"
+          className="absolute left-6 flex flex-col items-center justify-center h-full text-muted-foreground hover:text-foreground"
         >
           <Home className="w-5 h-5 mb-1" />
           <span className="text-[9px] uppercase tracking-wide-2">Home</span>
         </button>
+
         <button
           onClick={() => handleNav("/messages")}
-          className="relative flex flex-col items-center justify-center flex-1 h-full text-muted-foreground hover:text-foreground"
+          className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center justify-center h-full text-muted-foreground hover:text-foreground"
         >
           <div className="relative">
             <MessageSquare className="w-5 h-5 mb-1" />
@@ -346,9 +347,10 @@ export default function Navbar() {
           </div>
           <span className="text-[9px] uppercase tracking-wide-2">Inbox</span>
         </button>
+
         <button
           onClick={openCart}
-          className="relative flex flex-col items-center justify-center flex-1 h-full text-muted-foreground hover:text-foreground"
+          className="absolute right-6 flex flex-col items-center justify-center h-full text-muted-foreground hover:text-foreground"
         >
           <div className="relative">
             <ShoppingBag className="w-5 h-5 mb-1" />

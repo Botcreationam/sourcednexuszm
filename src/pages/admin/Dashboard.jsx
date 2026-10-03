@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Tags, ClipboardList, Package, Clock, MessageSquareQuote, Users, Activity, Eye, ArrowUpRight, BarChart } from "lucide-react";
+import { ClipboardList, Package, Clock, MessageSquareQuote, Users, Activity, Eye, ArrowUpRight, BarChart, TrendingUp, History } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 import { base44 } from "@/api/base44Client";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
@@ -8,7 +9,6 @@ export default function Dashboard() {
   const [products, setProducts] = useState([]);
   const [preorders, setPreorders] = useState([]);
   const [inquiries, setInquiries] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -16,29 +16,25 @@ export default function Dashboard() {
     async function loadStats() {
       try {
         if (isSupabaseConfigured && supabase) {
-          const [p, po, c, inq, an] = await Promise.all([
+          const [p, po, inq, an] = await Promise.all([
             supabase.from("products").select("*").order("created_at", { ascending: false }).limit(200),
             supabase.from("preorders").select("*").limit(200),
-            supabase.from("categories").select("*").limit(100),
             supabase.from("customer_inquiries").select("*").limit(200).catch(() => ({ data: [] })),
             supabase.rpc("get_dashboard_analytics").catch(() => ({ data: null }))
           ]);
           setProducts(p.data || []);
           setPreorders(po.data || []);
-          setCategories(c.data || []);
           setInquiries(inq?.data || []);
           setAnalytics(an?.data || null);
           return;
         }
 
-        const [p, po, c] = await Promise.all([
+        const [p, po] = await Promise.all([
           base44.entities.Product.list("-created_date", 200),
           base44.entities.Preorder.list("-created_date", 200),
-          base44.entities.Category.list("-created_date", 50),
         ]);
         setProducts(p || []);
         setPreorders(po || []);
-        setCategories(c || []);
       } catch (err) {
         console.error("Dashboard load error:", err);
       } finally {
@@ -51,7 +47,6 @@ export default function Dashboard() {
   const byCategory = {};
   products.forEach((p) => { byCategory[p.category] = (byCategory[p.category] || 0) + 1; });
   const pendingInquiries = inquiries.filter((i) => i.status === "Pending").length;
-  const newPreorders = preorders.filter((p) => p.status === "new").length;
   const recent = products.slice(0, 5);
 
   const stats = [
@@ -140,6 +135,60 @@ export default function Dashboard() {
                   <p className="text-xs text-muted-foreground uppercase tracking-wide-2">{p.view_count} views</p>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Traffic Trends Chart */}
+        {analytics?.daily_visits?.length > 0 && (
+          <div className="border border-border p-6 lg:col-span-2">
+            <h2 className="font-display text-2xl mb-4 flex items-center gap-2"><TrendingUp className="w-5 h-5"/> Traffic Trends (Last 30 Days)</h2>
+            <div className="h-[300px] w-full mt-6">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={analytics.daily_visits.map(d => ({ ...d, date: new Date(d.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) }))} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorVisits" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#C5A059" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#C5A059" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                  <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                  <RechartsTooltip 
+                    contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0px' }}
+                    itemStyle={{ color: 'hsl(var(--foreground))' }}
+                  />
+                  <Area type="monotone" dataKey="visits" stroke="#C5A059" strokeWidth={2} fillOpacity={1} fill="url(#colorVisits)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* Recent Visitor Activity */}
+        {analytics?.recent_activity?.length > 0 && (
+          <div className="border border-border p-6 lg:col-span-2">
+            <h2 className="font-display text-2xl mb-4 flex items-center gap-2"><History className="w-5 h-5"/> Customer Browsing Activity</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="pb-3 text-xs uppercase tracking-wide-2 text-muted-foreground font-normal">Time</th>
+                    <th className="pb-3 text-xs uppercase tracking-wide-2 text-muted-foreground font-normal">Visitor ID</th>
+                    <th className="pb-3 text-xs uppercase tracking-wide-2 text-muted-foreground font-normal">Page Path</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {analytics.recent_activity.map((act, i) => (
+                    <tr key={i} className="border-b border-border/50 last:border-0 hover:bg-muted/30">
+                      <td className="py-3 text-sm">{new Date(act.created_at).toLocaleString()}</td>
+                      <td className="py-3 font-mono text-xs">{act.visitor_id.substring(0, 8)}...</td>
+                      <td className="py-3 text-sm">{act.page_path}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

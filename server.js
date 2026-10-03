@@ -303,7 +303,6 @@ const server = http.createServer((req, res) => {
   const rawUrl = req.url || '/';
   const ip = getClientIp(req);
   const isSensitive =
-    rawUrl.includes('system-admin-portal') ||
     rawUrl.includes('/admin') ||
     rawUrl.includes('/login') ||
     rawUrl.includes('/api/inquiries');
