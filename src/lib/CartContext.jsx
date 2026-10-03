@@ -119,10 +119,8 @@ export function CartProvider({ children }) {
     setLocalData(CART_STORAGE_KEY, cart);
     setLocalData(WISHLIST_STORAGE_KEY, wishlist);
     if (isAuthenticated && user?.id && isInitialSyncDone.current) {
-      const timer = setTimeout(() => {
-        saveUserCartAndWishlist(user.id, cart, wishlist);
-      }, 800);
-      return () => clearTimeout(timer);
+      // Save immediately to avoid data loss on page unload/logout
+      saveUserCartAndWishlist(user.id, cart, wishlist);
     }
   }, [cart, wishlist, isAuthenticated, user?.id]);
 

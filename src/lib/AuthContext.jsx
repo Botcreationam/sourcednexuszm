@@ -224,6 +224,14 @@ export const AuthProvider = ({ children }) => {
       setSession(null);
       setIsAuthenticated(false);
       setIsAdmin(false);
+
+      try {
+        localStorage.removeItem('sn_cart_v1');
+        localStorage.removeItem('sn_wishlist_v1');
+      } catch (err) {
+        console.warn('Could not clear local cart/wishlist:', err);
+      }
+
       if (shouldRedirect) {
         window.location.href = '/';
       }
