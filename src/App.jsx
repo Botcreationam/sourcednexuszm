@@ -88,6 +88,19 @@ const AuthenticatedApp = () => {
 
 
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+import { trackWebsiteVisit } from '@/lib/analytics';
+
+function AnalyticsTracker() {
+  const location = useLocation();
+  
+  useEffect(() => {
+    trackWebsiteVisit(location);
+  }, [location]);
+
+  return null;
+}
 
 function App() {
 
@@ -98,6 +111,7 @@ function App() {
           <QueryClientProvider client={queryClientInstance}>
             <Router>
               <ScrollToTop />
+              <AnalyticsTracker />
               <AuthenticatedApp />
             </Router>
             <Toaster />

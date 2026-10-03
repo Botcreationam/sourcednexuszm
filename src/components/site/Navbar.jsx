@@ -332,22 +332,20 @@ export default function Navbar() {
           <Home className="w-5 h-5 mb-1" />
           <span className="text-[9px] uppercase tracking-wide-2">Home</span>
         </button>
-        {isAuthenticated && (
-          <button
-            onClick={() => handleNav("/messages")}
-            className="relative flex flex-col items-center justify-center flex-1 h-full text-muted-foreground hover:text-foreground"
-          >
-            <div className="relative">
-              <MessageSquare className="w-5 h-5 mb-1" />
-              {unreadMessages > 0 && (
-                <span className="absolute -top-1 -right-2 bg-blue-500 text-white text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
-                  {unreadMessages}
-                </span>
-              )}
-            </div>
-            <span className="text-[9px] uppercase tracking-wide-2">Inbox</span>
-          </button>
-        )}
+        <button
+          onClick={() => handleNav("/messages")}
+          className="relative flex flex-col items-center justify-center flex-1 h-full text-muted-foreground hover:text-foreground"
+        >
+          <div className="relative">
+            <MessageSquare className="w-5 h-5 mb-1" />
+            {unreadMessages > 0 && (
+              <span className="absolute -top-1 -right-2 bg-blue-500 text-white text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
+                {unreadMessages}
+              </span>
+            )}
+          </div>
+          <span className="text-[9px] uppercase tracking-wide-2">Inbox</span>
+        </button>
         <button
           onClick={openCart}
           className="relative flex flex-col items-center justify-center flex-1 h-full text-muted-foreground hover:text-foreground"

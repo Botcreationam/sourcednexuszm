@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Tags, ClipboardList, Package, Clock, MessageSquareQuote } from "lucide-react";
+import { Tags, ClipboardList, Package, Clock, MessageSquareQuote, Users, Activity, Eye, ArrowUpRight, BarChart } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
@@ -9,22 +9,25 @@ export default function Dashboard() {
   const [preorders, setPreorders] = useState([]);
   const [inquiries, setInquiries] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadStats() {
       try {
         if (isSupabaseConfigured && supabase) {
-          const [p, po, c, inq] = await Promise.all([
+          const [p, po, c, inq, an] = await Promise.all([
             supabase.from("products").select("*").order("created_at", { ascending: false }).limit(200),
             supabase.from("preorders").select("*").limit(200),
             supabase.from("categories").select("*").limit(100),
             supabase.from("customer_inquiries").select("*").limit(200).catch(() => ({ data: [] })),
+            supabase.rpc("get_dashboard_analytics").catch(() => ({ data: null }))
           ]);
           setProducts(p.data || []);
           setPreorders(po.data || []);
           setCategories(c.data || []);
           setInquiries(inq?.data || []);
+          setAnalytics(an?.data || null);
           return;
         }
 
@@ -52,10 +55,14 @@ export default function Dashboard() {
   const recent = products.slice(0, 5);
 
   const stats = [
-    { label: "Customer Inquiries", value: inquiries.length, icon: MessageSquareQuote, to: "/secure/nexuspanel-trust/inquiries" },
+    { label: "Total Visits", value: analytics?.total_visits || 0, icon: Users, to: "#" },
+    { label: "Unique Visitors", value: analytics?.unique_visitors || 0, icon: Activity, to: "#" },
+    { label: "Product Views", value: analytics?.product_views || 0, icon: Eye, to: "#" },
+    { label: "Returning Visitors", value: analytics?.returning_visitors || 0, icon: ArrowUpRight, to: "#" },
     { label: "Pending Quotes", value: pendingInquiries, icon: Clock, to: "/secure/nexuspanel-trust/inquiries" },
     { label: "Total Products", value: products.length, icon: Package, to: "/secure/nexuspanel-trust/products" },
     { label: "Pre-Orders", value: preorders.length, icon: ClipboardList, to: "/secure/nexuspanel-trust/preorders" },
+    { label: "Inquiries", value: inquiries.length, icon: MessageSquareQuote, to: "/secure/nexuspanel-trust/inquiries" }
   ];
 
   if (loading) return <div className="p-10 text-center text-muted-foreground text-sm tracking-wide-2 uppercase">Loading dashboard…</div>;
@@ -119,6 +126,23 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+
+        {analytics?.most_viewed_products?.length > 0 && (
+          <div className="border border-border p-6 lg:col-span-2">
+            <h2 className="font-display text-2xl mb-4 flex items-center gap-2"><BarChart className="w-5 h-5"/> Most Viewed Products</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {analytics.most_viewed_products.map(p => (
+                <div key={p.id} className="border border-border p-4 hover:border-foreground transition-colors">
+                  <div className="aspect-square bg-muted mb-3 overflow-hidden">
+                    {p.images?.[0] && <img src={p.images[0]} alt="" className="w-full h-full object-cover" />}
+                  </div>
+                  <p className="text-sm truncate font-medium">{p.name}</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide-2">{p.view_count} views</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

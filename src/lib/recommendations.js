@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { getSessionId, getVisitorId } from "@/lib/analytics";
 
 /**
  * Sourced Nexus — TikTok FYP-Inspired Personalized Recommendation Engine
@@ -137,16 +138,14 @@ export function recordProductView(product) {
     window.dispatchEvent(new CustomEvent("sn:activity_updated"));
 
     // Async sync to Supabase for real view counts (anonymous or auth'd)
-    const sessionId = localStorage.getItem("sn_session_id") || (() => {
-      const sid = Math.random().toString(36).substring(2, 15);
-      localStorage.setItem("sn_session_id", sid);
-      return sid;
-    })();
+    const sessionId = getSessionId();
+    const visitorId = getVisitorId();
     
     supabase.auth.getSession().then(({ data }) => {
       supabase.from("product_views").insert({
         product_id: id,
         session_id: sessionId,
+        visitor_id: visitorId,
         user_id: data?.session?.user?.id || null
       }).then(() => {}).catch(() => {});
     });
