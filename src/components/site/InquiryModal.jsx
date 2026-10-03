@@ -15,8 +15,20 @@ export default function InquiryModal({ open, onClose, items = [] }) {
   const [contactNumber, setContactNumber] = useState("");
   const [email, setEmail] = useState("");
   const [inquiryType, setInquiryType] = useState("quote_request"); // 'quote_request' | 'preorder'
+  const [preferredContact, setPreferredContact] = useState("whatsapp");
   const [specifications, setSpecifications] = useState("");
   const [additionalInstructions, setAdditionalInstructions] = useState("");
+  const [localItems, setLocalItems] = useState([]);
+
+  useEffect(() => {
+    setLocalItems(Array.isArray(items) && items.length > 0 ? items : []);
+  }, [items]);
+
+  const parsePrice = (priceStr) => {
+    if (!priceStr) return 0;
+    const num = parseFloat(priceStr.toString().replace(/[^0-9.]/g, ''));
+    return isNaN(num) ? 0 : num;
+  };
 
   const [submitting, setSubmitting] = useState(false);
   const [submittedData, setSubmittedData] = useState(null);
@@ -44,7 +56,7 @@ export default function InquiryModal({ open, onClose, items = [] }) {
       toast({ title: "Valid Contact Required", description: "Please enter your phone or WhatsApp number.", variant: "destructive" });
       return;
     }
-    if (activeItems.length === 0) {
+    if (localItems.length === 0) {
       toast({ title: "Cart Empty", description: "Please add at least one product to your inquiry.", variant: "destructive" });
       return;
     }
@@ -56,7 +68,7 @@ export default function InquiryModal({ open, onClose, items = [] }) {
         customer_name: customerName,
         contact_number: contactNumber,
         email: email || user?.email || null,
-        items: activeItems.map((item) => ({
+        items: localItems.map((item) => ({
           id: item.id,
           name: item.name,
           category: item.category || "General",
@@ -65,9 +77,12 @@ export default function InquiryModal({ open, onClose, items = [] }) {
           quantity: item.quantity || 1,
           selectedSize: item.selectedSize || null,
           selectedColor: item.selectedColor || null,
+          selectedGrade: item.selectedGrade || null,
           specifications: item.specifications || "",
         })),
-        total_items: activeItems.reduce((acc, i) => acc + (i.quantity || 1), 0),
+        total_items: localItems.reduce((acc, i) => acc + (i.quantity || 1), 0),
+        estimated_total: localItems.reduce((acc, i) => acc + (parsePrice(i.price) * (i.quantity || 1)), 0),
+        preferred_contact: preferredContact,
         specifications,
         additional_instructions: additionalInstructions,
         source: "website",
@@ -98,13 +113,13 @@ export default function InquiryModal({ open, onClose, items = [] }) {
       toast({ title: "Name Required", description: "Please enter your name for the WhatsApp message.", variant: "destructive" });
       return;
     }
-    if (activeItems.length === 0) {
+    if (localItems.length === 0) {
       toast({ title: "Cart Empty", description: "Please select products before inquiring.", variant: "destructive" });
       return;
     }
 
     const message = buildCartInquiryWhatsAppMessage({
-      items: activeItems,
+      items: localItems,
       customerName,
       contactNumber,
       email,
@@ -120,8 +135,10 @@ export default function InquiryModal({ open, onClose, items = [] }) {
         customer_name: customerName,
         contact_number: contactNumber || "WhatsApp",
         email: email || null,
-        items: activeItems,
-        total_items: activeItems.reduce((acc, i) => acc + (i.quantity || 1), 0),
+        items: localItems,
+        total_items: localItems.reduce((acc, i) => acc + (i.quantity || 1), 0),
+        estimated_total: localItems.reduce((acc, i) => acc + (parsePrice(i.price) * (i.quantity || 1)), 0),
+        preferred_contact: preferredContact,
         specifications,
         additional_instructions: additionalInstructions,
         source: "whatsapp",
@@ -137,6 +154,17 @@ export default function InquiryModal({ open, onClose, items = [] }) {
     setSubmittedData(null);
     onClose();
   };
+
+  const handleQuantityChange = (idx, delta) => {
+    setLocalItems(prev => prev.map((item, i) => {
+      if (i === idx) {
+        return { ...item, quantity: Math.max(1, (item.quantity || 1) + delta) };
+      }
+      return item;
+    }));
+  };
+
+  const totalEstimatedCost = localItems.reduce((acc, i) => acc + (parsePrice(i.price) * (i.quantity || 1)), 0);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
@@ -197,7 +225,7 @@ export default function InquiryModal({ open, onClose, items = [] }) {
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium text-white truncate">{item.name}</p>
                         <p className="text-[10px] text-zinc-400">
-                          Qty: {item.quantity || 1} {item.selectedSize ? `• Size: ${item.selectedSize}` : ""} {item.selectedColor ? `• Color: ${item.selectedColor}` : ""}
+                          Qty: {item.quantity || 1} {item.selectedGrade ? `• Grade: ${item.selectedGrade.name}` : ""} {item.selectedSize ? `• Size: ${item.selectedSize}` : ""} {item.selectedColor ? `• Color: ${item.selectedColor}` : ""}
                         </p>
                       </div>
                     </div>
@@ -236,13 +264,13 @@ export default function InquiryModal({ open, onClose, items = [] }) {
               <div className="border border-zinc-800 bg-zinc-900/30 p-4">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[10px] tracking-wide-2 uppercase text-zinc-400 font-medium">
-                    Products in Inquiry ({activeItems.length})
+                    Products in Inquiry ({localItems.length})
                   </span>
-                  <span className="text-[9px] tracking-luxe uppercase text-[#C5A059]">Price on Request</span>
+                  <span className="text-[9px] tracking-luxe uppercase text-[#C5A059]">Estimated Total: {totalEstimatedCost > 0 ? formatKwachaPrice(totalEstimatedCost) : "Price on Request"}</span>
                 </div>
 
                 <div className="divide-y divide-zinc-850 max-h-40 overflow-y-auto pr-1">
-                  {activeItems.map((item, idx) => (
+                  {localItems.map((item, idx) => (
                     <div key={item.itemKey || idx} className="py-2.5 first:pt-0 last:pb-0 flex items-center gap-3">
                       <div className="w-12 h-12 bg-zinc-900 border border-zinc-800 flex-shrink-0 overflow-hidden">
                         {item.image ? (
@@ -253,14 +281,19 @@ export default function InquiryModal({ open, onClose, items = [] }) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-white truncate font-medium">{item.name}</p>
-                        <div className="flex flex-wrap items-center gap-2 mt-0.5 text-[10px] text-zinc-400">
-                          <span>Qty: {item.quantity || 1}</span>
+                        <div className="flex flex-wrap items-center gap-2 mt-1 text-[10px] text-zinc-400">
+                          <div className="flex items-center border border-zinc-700 bg-zinc-800">
+                            <button type="button" onClick={() => handleQuantityChange(idx, -1)} className="px-2 py-0.5 hover:bg-zinc-700 text-white">-</button>
+                            <span className="px-2 font-mono">{item.quantity || 1}</span>
+                            <button type="button" onClick={() => handleQuantityChange(idx, 1)} className="px-2 py-0.5 hover:bg-zinc-700 text-white">+</button>
+                          </div>
+                          {item.selectedGrade && <span className="bg-zinc-800 px-1.5 py-0.2 rounded-none">Grade: {item.selectedGrade.name}</span>}
                           {item.selectedSize && <span className="bg-zinc-800 px-1.5 py-0.2 rounded-none">Size: {item.selectedSize}</span>}
                           {item.selectedColor && <span className="bg-zinc-800 px-1.5 py-0.2 rounded-none">Color: {item.selectedColor}</span>}
                         </div>
                       </div>
-                      <div className="text-right text-[11px] text-zinc-400 flex-shrink-0">
-                        {formatKwachaPrice(item.price)}
+                      <div className="text-right text-[11px] text-[#C5A059] flex-shrink-0 font-medium">
+                        {formatKwachaPrice(parsePrice(item.price) * (item.quantity || 1))}
                       </div>
                     </div>
                   ))}
@@ -352,6 +385,21 @@ export default function InquiryModal({ open, onClose, items = [] }) {
                 />
               </div>
 
+              <div>
+                <label className="block text-[10px] tracking-wide-2 uppercase text-zinc-400 mb-1.5">
+                  Preferred Contact Method
+                </label>
+                <select
+                  value={preferredContact}
+                  onChange={(e) => setPreferredContact(e.target.value)}
+                  className="w-full bg-zinc-900 border border-zinc-800 px-3 py-2.5 text-xs text-white focus:border-[#C5A059] outline-none appearance-none"
+                >
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="email">Email</option>
+                  <option value="phone">Phone Call</option>
+                </select>
+              </div>
+
               {/* Specifications & Notes */}
               <div>
                 <label className="block text-[10px] tracking-wide-2 uppercase text-zinc-400 mb-1.5">
@@ -385,7 +433,7 @@ export default function InquiryModal({ open, onClose, items = [] }) {
                   {/* Option 1: Submit Online */}
                   <button
                     type="submit"
-                    disabled={submitting || activeItems.length === 0}
+                    disabled={submitting || localItems.length === 0}
                     className="w-full bg-[#C5A059] hover:bg-[#b08e4d] disabled:opacity-50 text-black py-3.5 px-4 text-[11px] tracking-wide-2 uppercase font-medium transition-colors flex items-center justify-center gap-2"
                   >
                     <Send className="w-3.5 h-3.5" />
@@ -396,7 +444,7 @@ export default function InquiryModal({ open, onClose, items = [] }) {
                   <button
                     type="button"
                     onClick={handleWhatsAppSubmit}
-                    disabled={submitting || activeItems.length === 0}
+                    disabled={submitting || localItems.length === 0}
                     className="w-full bg-[#1f7a4c] hover:bg-[#165c39] disabled:opacity-50 text-white py-3.5 px-4 text-[11px] tracking-wide-2 uppercase font-medium transition-colors flex items-center justify-center gap-2"
                   >
                     <MessageCircle className="w-4 h-4" />

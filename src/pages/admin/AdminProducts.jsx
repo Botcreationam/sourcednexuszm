@@ -20,6 +20,7 @@ const emptyForm = {
   name: "", price: "", category: "", description: "",
   sizes: "", colors: "", status: "available",
   is_new_arrival: false, is_popular: false, delivery_info: "7–14 working days",
+  grades: [],
 };
 
 export default function AdminProducts() {
@@ -76,6 +77,7 @@ export default function AdminProducts() {
       description: p.description || "", sizes: (p.sizes || []).join(", "), colors: (p.colors || []).join(", "),
       status: p.status || "available", is_new_arrival: !!p.is_new_arrival, is_popular: !!p.is_popular,
       delivery_info: p.delivery_info || "7–14 working days",
+      grades: p.grades || [],
     });
     setImages(p.images || []);
     setModalOpen(true);
@@ -145,6 +147,28 @@ export default function AdminProducts() {
   };
 
 
+
+  const addGrade = () => {
+    setForm(f => ({
+      ...f,
+      grades: [...f.grades, { name: "", price: "", original_price: "", stock_status: "In Stock" }]
+    }));
+  };
+
+  const updateGrade = (index, field, value) => {
+    setForm(f => {
+      const newGrades = [...f.grades];
+      newGrades[index] = { ...newGrades[index], [field]: value };
+      return { ...f, grades: newGrades };
+    });
+  };
+
+  const removeGrade = (index) => {
+    setForm(f => ({
+      ...f,
+      grades: f.grades.filter((_, i) => i !== index)
+    }));
+  };
 
   const save = async (e) => {
     e.preventDefault();
@@ -346,6 +370,40 @@ export default function AdminProducts() {
               </div>
               <In label="Delivery Info"><input value={form.delivery_info} onChange={(e) => update("delivery_info", e.target.value)} className={inp} /></In>
               <In label="Description"><textarea value={form.description} onChange={(e) => update("description", e.target.value)} rows={4} className={inp} /></In>
+
+              {/* Grades Section */}
+              <div className="border border-border p-4 bg-muted/20">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide-2">Product Grades</h3>
+                  <button type="button" onClick={addGrade} className="text-[10px] bg-foreground text-background px-3 py-1.5 uppercase tracking-wide-2 hover:opacity-85">
+                    + Add Grade
+                  </button>
+                </div>
+                {form.grades.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">No grades added. Product will use the default price.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {form.grades.map((grade, idx) => (
+                      <div key={idx} className="p-3 border border-border bg-background grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 relative">
+                        <button type="button" onClick={() => removeGrade(idx)} className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center hover:scale-110">
+                          <X className="w-3 h-3" />
+                        </button>
+                        <In label="Grade Name"><input value={grade.name} onChange={(e) => updateGrade(idx, "name", e.target.value)} placeholder="e.g. First Grade" className={inp} required /></In>
+                        <In label="Price (K)"><input value={grade.price} onChange={(e) => updateGrade(idx, "price", e.target.value)} placeholder="e.g. 450" className={inp} required /></In>
+                        <In label="Original Price (K)"><input value={grade.original_price} onChange={(e) => updateGrade(idx, "original_price", e.target.value)} placeholder="e.g. 500" className={inp} /></In>
+                        <In label="Stock Status">
+                          <select value={grade.stock_status} onChange={(e) => updateGrade(idx, "stock_status", e.target.value)} className={inp}>
+                            <option value="In Stock">In Stock</option>
+                            <option value="Low Stock">Low Stock</option>
+                            <option value="Out of Stock">Out of Stock</option>
+                            <option value="Available on Request">Available on Request</option>
+                          </select>
+                        </In>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <div className="flex gap-6">
                 <label className="flex items-center gap-2 text-sm cursor-pointer">

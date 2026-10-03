@@ -26,8 +26,10 @@ export default function ProductDetail() {
   const [isChatOpen, setIsChatOpen] = useState(false);
 
   // Cart & Options State
+  // Cart & Options State
   const [selectedSize, setSelectedSize] = useState(null);
   const [selectedColor, setSelectedColor] = useState(null);
+  const [selectedGrade, setSelectedGrade] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [specifications, setSpecifications] = useState("");
 
@@ -57,6 +59,7 @@ export default function ProductDetail() {
             setActiveImg(0);
             if (data.sizes?.length) setSelectedSize(data.sizes[0]);
             if (data.colors?.length) setSelectedColor(data.colors[0]);
+            if (data.grades?.length) setSelectedGrade(data.grades[0]);
             setLoading(false);
             return;
           }
@@ -67,6 +70,7 @@ export default function ProductDetail() {
           recordProductView(bProduct);
           if (bProduct.sizes?.length) setSelectedSize(bProduct.sizes[0]);
           if (bProduct.colors?.length) setSelectedColor(bProduct.colors[0]);
+          if (bProduct.grades?.length) setSelectedGrade(bProduct.grades[0]);
         }
         setActiveImg(0);
       } catch (err) {
@@ -111,10 +115,26 @@ export default function ProductDetail() {
   }
 
   const images = product.images?.length ? product.images : [];
-  const status = product.status || "available";
+  
+  const hasGrades = product.grades?.length > 0;
+  const currentPrice = hasGrades && selectedGrade ? selectedGrade.price : product.price;
+  const originalPrice = hasGrades && selectedGrade ? selectedGrade.original_price : null;
+  const status = hasGrades && selectedGrade ? selectedGrade.stock_status.toLowerCase().replace(/ /g, "_") : (product.status || "available");
+  
   const exactSelectedImage = images[activeImg] || (images.length > 0 ? images[0] : null);
   const inCart = isInCart(product.id);
   const inWishlist = isInWishlist(product.id);
+
+  const calculateDiscount = (price, original) => {
+    if (!price || !original) return null;
+    const p = parseFloat(price.replace(/[^0-9.]/g, ''));
+    const o = parseFloat(original.replace(/[^0-9.]/g, ''));
+    if (p && o && o > p) {
+      return Math.round(((o - p) / o) * 100);
+    }
+    return null;
+  };
+  const discountPercent = calculateDiscount(currentPrice, originalPrice);
 
   const handleWishlistToggle = () => {
     const isSaved = toggleWishlist(product);
@@ -129,8 +149,10 @@ export default function ProductDetail() {
       quantity,
       selectedSize,
       selectedColor,
+      selectedGrade,
       specifications,
       selectedImage: exactSelectedImage,
+      price: currentPrice,
       openDrawer: true,
     });
     toast({
@@ -153,11 +175,12 @@ export default function ProductDetail() {
       id: product.id,
       name: product.name,
       category: product.category,
-      price: product.price || "Price on Request",
+      price: currentPrice || "Price on Request",
       image: exactSelectedImage,
       quantity,
       selectedSize,
       selectedColor,
+      selectedGrade,
       specifications,
     };
     openInquiryModal([singleItem]);
@@ -170,10 +193,12 @@ export default function ProductDetail() {
           id: product.id,
           name: product.name,
           category: product.category,
+          price: currentPrice || "Price on Request",
           image: exactSelectedImage,
           quantity,
           selectedSize,
           selectedColor,
+          selectedGrade,
           specifications,
         },
       ],
@@ -255,13 +280,45 @@ export default function ProductDetail() {
                 {metrics.review_count > 0 && <span>★ {metrics.average_rating} ({metrics.review_count} Reviews)</span>}
               </div>
 
-              <p className="text-2xl font-display mt-4 text-foreground">{formatKwachaPrice(product.price)}</p>
+              <div className="mt-4 flex flex-col gap-1">
+                {discountPercent && (
+                  <span className="inline-block px-2.5 py-0.5 bg-green-500/10 text-green-600 font-medium text-xs rounded-full w-fit">
+                    {discountPercent}% OFF
+                  </span>
+                )}
+                {originalPrice && (
+                  <span className="text-lg text-muted-foreground line-through decoration-muted-foreground/50">{formatKwachaPrice(originalPrice)}</span>
+                )}
+                <p className="text-3xl font-display text-foreground">{formatKwachaPrice(currentPrice)}</p>
+              </div>
+
+              {hasGrades && (
+                <div className="mt-6 border-t border-border pt-5">
+                  <p className="text-[11px] tracking-wide-2 uppercase text-muted-foreground mb-3">Select your preferred grade</p>
+                  <div className="space-y-3">
+                    {product.grades.map((g, idx) => (
+                      <label key={idx} className={`flex items-center gap-3 cursor-pointer p-3 border transition-colors ${selectedGrade?.name === g.name ? 'border-[#C5A059] bg-[#C5A059]/5' : 'border-border hover:border-foreground/30'}`}>
+                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center flex-shrink-0 ${selectedGrade?.name === g.name ? 'border-[#C5A059]' : 'border-border'}`}>
+                          {selectedGrade?.name === g.name && <div className="w-2.5 h-2.5 bg-[#C5A059] rounded-full" />}
+                        </div>
+                        <div className="flex-1 flex justify-between items-center text-sm">
+                          <span className={`${selectedGrade?.name === g.name ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>{g.name}</span>
+                          <span className="text-foreground">{formatKwachaPrice(g.price)}</span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="mt-4 p-3 bg-muted/30 border border-border">
+                    <p className="text-sm font-medium">Selected: {selectedGrade?.name}</p>
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center gap-3 mt-5">
                 <span className={`text-[10px] tracking-wide-2 uppercase px-3 py-1.5 ${
-                  status === "available" ? "bg-foreground text-background" :
-                  status === "preorder" ? "border border-foreground text-foreground" : "bg-muted text-muted-foreground"
-                }`}>{STATUS_LABELS[status]}</span>
+                  status === "available" || status === "in_stock" ? "bg-foreground text-background" :
+                  status === "preorder" || status === "available_on_request" ? "border border-foreground text-foreground" : "bg-muted text-muted-foreground"
+                }`}>{STATUS_LABELS[status] || selectedGrade?.stock_status || status}</span>
                 <span className="text-[11px] tracking-wide-2 uppercase text-muted-foreground flex items-center gap-1.5">
                   <Truck className="w-3.5 h-3.5" /> Delivery: {product.delivery_info || "7–14 working days"}
                 </span>

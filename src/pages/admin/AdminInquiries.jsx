@@ -20,10 +20,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import AdminChatModal from "./AdminChatModal";
 
-const STATUSES = ["Pending", "Reviewing", "Quoted", "Confirmed", "Completed", "Cancelled"];
+const STATUSES = ["New", "Contacted", "Pending", "Reviewing", "Quoted", "Confirmed", "Completed", "Cancelled"];
 
 const STATUS_STYLES = {
-  Pending: "bg-amber-500/15 text-amber-400 border border-amber-500/30",
+  New: "bg-blue-500/15 text-blue-400 border border-blue-500/30",
+  Contacted: "bg-amber-500/15 text-amber-400 border border-amber-500/30",
+  Pending: "bg-orange-500/15 text-orange-400 border border-orange-500/30",
   Reviewing: "bg-blue-500/15 text-blue-400 border border-blue-500/30",
   Quoted: "bg-purple-500/15 text-purple-400 border border-purple-500/30",
   Confirmed: "bg-[#1f7a4c]/20 text-emerald-400 border border-emerald-500/30",
@@ -330,8 +332,9 @@ export default function AdminInquiries() {
                     <span className="text-[10px] tracking-wide-2 uppercase text-muted-foreground font-semibold">
                       Exact Requested Products ({items.length})
                     </span>
-                    <span className="text-[9px] tracking-wide-2 uppercase text-[#C5A059]">
-                      Total Units: {inq.total_items || items.reduce((acc, i) => acc + (i.quantity || 1), 0)}
+                    <span className="text-[9px] tracking-wide-2 uppercase text-[#C5A059] flex items-center gap-3">
+                      <span>Total Units: {inq.total_items || items.reduce((acc, i) => acc + (i.quantity || 1), 0)}</span>
+                      {inq.estimated_total > 0 && <span>Est. Total: {formatKwachaPrice(inq.estimated_total)}</span>}
                     </span>
                   </div>
 
@@ -370,11 +373,13 @@ export default function AdminInquiries() {
                           <p className="font-medium text-foreground truncate" title={item.name}>
                             {item.name || "Product"}
                           </p>
-                          <p className="text-[10px] text-muted-foreground truncate">
-                            ID: <span className="font-mono">{item.id || "N/A"}</span>
+                          <p className="text-[10px] text-muted-foreground truncate flex justify-between">
+                            <span>ID: <span className="font-mono">{item.id || "N/A"}</span></span>
+                            {item.price && <span>{item.price}</span>}
                           </p>
                           <div className="flex flex-wrap gap-1.5 mt-1 text-[10px]">
                             <span className="bg-muted px-1.5 py-0.5">Qty: {item.quantity || 1}</span>
+                            {item.selectedGrade && <span className="bg-muted px-1.5 py-0.5">Grade: {item.selectedGrade.name}</span>}
                             {item.selectedSize && <span className="bg-muted px-1.5 py-0.5">Size: {item.selectedSize}</span>}
                             {item.selectedColor && <span className="bg-muted px-1.5 py-0.5">Color: {item.selectedColor}</span>}
                           </div>
