@@ -343,25 +343,11 @@ export default function Catalog() {
           controlsHidden ? "-translate-y-full" : "translate-y-0"
         }`}
       >
-        <div className="mx-auto max-w-7xl px-5 md:px-8 py-4">
-          <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between">
-            {/* Category pills (desktop & tablet) */}
-            <div className="hidden md:flex gap-2 overflow-x-auto no-scrollbar">
-              {categories.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setCategory(c)}
-                  className={`text-[11px] tracking-wide-2 uppercase px-4 py-2 whitespace-nowrap transition-colors ${
-                    category === c ? "bg-foreground text-background" : "border border-border hover:border-foreground"
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
-
+        {/* Search row — sits in the header area, directly below the fixed navbar */}
+        <div className="border-b border-border">
+          <div className="mx-auto max-w-7xl px-5 md:px-8 py-3">
             <div className="flex gap-3 items-center">
-              <div className="relative flex-1 md:flex-none md:w-64">
+              <div className="relative flex-1 md:flex-none md:w-80">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   value={search}
@@ -372,7 +358,7 @@ export default function Catalog() {
                   onFocus={() => setShowSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                   placeholder="Search products, e.g. station suits"
-                  className="w-full md:w-64 pl-10 pr-8 py-2.5 text-sm bg-transparent border border-border rounded-full focus:border-foreground outline-none"
+                  className="w-full pl-10 pr-8 py-2.5 text-sm bg-transparent border border-border rounded-full focus:border-foreground outline-none"
                 />
                 {search && (
                   <button
@@ -415,7 +401,7 @@ export default function Catalog() {
                 )}
               </div>
 
-              {/* Sort: circular icon trigger on mobile, labeled dropdown on desktop */}
+              {/* Sort: circular icon trigger on mobile (desktop sort lives with the category row) */}
               <div className="relative md:hidden flex-shrink-0">
                 <button
                   type="button"
@@ -448,21 +434,43 @@ export default function Catalog() {
                   </>
                 )}
               </div>
-              <div className="relative hidden md:block">
-                <SlidersHorizontal className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                <select
-                  value={sort}
-                  onChange={(e) => setSort(e.target.value)}
-                  className="appearance-none pl-9 pr-8 py-2 text-sm bg-transparent border border-border focus:border-foreground outline-none cursor-pointer"
+            </div>
+          </div>
+        </div>
+
+        {/* Category navigation — separate section below the search bar */}
+        <div className="mx-auto max-w-7xl px-5 md:px-8 py-4">
+          <div className="hidden md:flex items-center justify-between gap-4">
+            {/* Category pills (desktop & tablet) */}
+            <div className="flex gap-2 overflow-x-auto no-scrollbar">
+              {categories.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setCategory(c)}
+                  className={`text-[11px] tracking-wide-2 uppercase px-4 py-2 whitespace-nowrap transition-colors ${
+                    category === c ? "bg-foreground text-background" : "border border-border hover:border-foreground"
+                  }`}
                 >
-                  {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-                </select>
-              </div>
+                  {c}
+                </button>
+              ))}
+            </div>
+
+            {/* Sort dropdown (desktop) */}
+            <div className="relative flex-shrink-0">
+              <SlidersHorizontal className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                className="appearance-none pl-9 pr-8 py-2 text-sm bg-transparent border border-border focus:border-foreground outline-none cursor-pointer"
+              >
+                {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
             </div>
           </div>
 
           {/* Category selector (mobile): circular icon + label, matches the app's visual language */}
-          <div className="flex md:hidden gap-5 overflow-x-auto no-scrollbar mt-4 -mx-1 px-1 pb-0.5">
+          <div className="flex md:hidden gap-5 overflow-x-auto no-scrollbar -mx-1 px-1 pb-0.5">
             {categories.map((c) => {
               const Icon = getCategoryIcon(c);
               const active = category === c;
