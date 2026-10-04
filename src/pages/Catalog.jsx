@@ -85,6 +85,33 @@ export default function Catalog() {
   const [recRefreshKey, setRecRefreshKey] = useState(0);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
 
+  // Hide the sticky controls bar when the user scrolls down, reveal it again
+  // as soon as they scroll up. Always visible near the top of the page.
+  const [controlsHidden, setControlsHidden] = useState(false);
+  useEffect(() => {
+    let lastY = window.scrollY;
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const y = window.scrollY;
+        const delta = y - lastY;
+        if (y < 140) {
+          setControlsHidden(false);
+        } else if (delta > 8) {
+          setControlsHidden(true);
+        } else if (delta < -8) {
+          setControlsHidden(false);
+        }
+        lastY = y;
+        ticking = false;
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   const category = params.get("category") || "All";
   const sort = params.get("sort") || "newest";
 
@@ -310,8 +337,12 @@ export default function Catalog() {
         </div>
       </section>
 
-      {/* Controls */}
-      <div className="sticky top-16 md:top-20 z-30 bg-background/90 backdrop-blur-md border-b border-border">
+      {/* Controls — slides away when scrolling down, returns when scrolling up */}
+      <div
+        className={`sticky top-16 md:top-20 z-30 bg-background/90 backdrop-blur-md border-b border-border transition-transform duration-300 ease-out ${
+          controlsHidden ? "-translate-y-full" : "translate-y-0"
+        }`}
+      >
         <div className="mx-auto max-w-7xl px-5 md:px-8 py-4">
           <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between">
             {/* Category pills (desktop & tablet) */}
