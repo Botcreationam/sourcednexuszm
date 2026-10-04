@@ -15,7 +15,7 @@ export default function Contact() {
             <p className="text-[11px] tracking-luxe uppercase text-muted-foreground">Get In Touch</p>
             <h1 className="font-display text-5xl md:text-6xl mt-3">Contact Sourced Nexus</h1>
             <p className="mt-4 text-sm font-light text-muted-foreground max-w-md mx-auto">
-              Questions, custom requests or pre-orders — we're one message away.
+              Questions, custom requests or pre-orders: we're one message away.
             </p>
           </ScrollReveal>
         </div>

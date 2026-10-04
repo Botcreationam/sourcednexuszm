@@ -62,7 +62,7 @@ const CATEGORIES_SOURCED = [
 const FAQS = [
   {
     q: "What types of products can Sourced Nexus source?",
-    a: "We source virtually any premium product available internationally — from luxury dresses and bespoke suits to flagship electronics (smartphones, laptops, gaming consoles), Swiss watches, designer sneakers, handbags, and niche perfumes.",
+    a: "We source virtually any premium product available internationally, from luxury dresses and bespoke suits to flagship electronics (smartphones, laptops, gaming consoles), Swiss watches, designer sneakers, handbags, and niche perfumes.",
   },
   {
     q: "How long does delivery take to Lusaka?",
@@ -98,7 +98,7 @@ export default function HowItWorks() {
               How Sourced Nexus Works
             </h1>
             <p className="mt-6 text-sm md:text-base font-light text-muted-foreground max-w-xl mx-auto">
-              From high-end fashion and statement footwear to flagship electronics and luxury timepieces — if it exists anywhere in the world, we bring it to Lusaka.
+              From high-end fashion and statement footwear to flagship electronics and luxury timepieces: if it exists anywhere in the world, we bring it to Lusaka.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
               <button
@@ -156,7 +156,7 @@ export default function HowItWorks() {
           <SectionHeading
             eyebrow="Coverage"
             title="What We Source"
-            subtitle="We don't just source dresses — our service covers the full spectrum of international luxury and consumer tech."
+            subtitle="We don't just source dresses. Our service covers the full spectrum of international luxury and consumer tech."
           />
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-14">

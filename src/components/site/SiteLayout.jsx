@@ -30,7 +30,10 @@ export default function SiteLayout() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
-      <main className="flex-1 pb-16 lg:pb-0">
+      {/* Bottom navigation clearance on mobile/tablet is handled by the footer
+          padding (most pages) and by page-level padding where the footer is
+          hidden, so no double padding appears between content and footer. */}
+      <main className="flex-1">
         <Outlet />
       </main>
       {!hideFooter && <Footer />}

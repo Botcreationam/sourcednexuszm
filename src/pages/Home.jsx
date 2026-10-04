@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Camera, Truck, MessageSquare, ShieldCheck, Sparkles, Package } from "lucide-react";
+import { ArrowRight, Camera, Truck, MessageSquare, ShieldCheck, LayoutGrid, Package } from "lucide-react";
 import { buildWhatsAppUrl, photoSourcingMessage, WHATSAPP_DISPLAY } from "@/lib/whatsapp";
 import ScrollReveal from "@/components/site/ScrollReveal";
 import SectionHeading from "@/components/site/SectionHeading";
@@ -85,8 +85,8 @@ export default function Home() {
           {[0, 1].map((rep) => (
             <div key={rep} className="flex shrink-0">
               {["CURATED", "CUSTOM", "DELIVERED", "PRE-ORDERS OPEN NOW", "LUSAKA ZAMBIA", "DELIVERY 7–14 WORKING DAYS"].map((t, i) => (
-                <span key={i} className="font-display text-2xl md:text-3xl px-8 text-foreground/80 flex items-center gap-8">
-                  {t} <span className="text-muted-foreground">✦</span>
+                <span key={i} className="font-display text-2xl md:text-3xl px-8 text-foreground/80 flex items-center gap-12">
+                  {t}
                 </span>
               ))}
             </div>
@@ -100,19 +100,19 @@ export default function Home() {
           <SectionHeading
             eyebrow="What We Offer"
             title="Everything you love, sourced with care."
-            subtitle="From everyday fashion to luxury pieces — explore ready-to-order items or let us source something special just for you."
+            subtitle="From everyday fashion to luxury pieces: explore ready-to-order items or let us source something special just for you."
           />
           <div className="grid md:grid-cols-3 gap-10 md:gap-16 mt-16">
             {[
               {
-                icon: Sparkles,
+                icon: LayoutGrid,
                 title: "Curated Catalogue",
-                text: "Browse suits, dresses, watches, shoes, electronics and more — each piece hand-picked by our team, with clear grades and pricing.",
+                text: "Browse suits, dresses, watches, shoes, electronics and more. Each piece is hand-picked by our team, with clear grades and pricing.",
               },
               {
                 icon: Package,
                 title: "Product Grades",
-                text: "Choose First, Second or Third Grade on graded items — each with its own price, so you always know exactly what you're paying for.",
+                text: "Choose First, Second or Third Grade on graded items, each with its own price, so you always know exactly what you're paying for.",
               },
               {
                 icon: Camera,
@@ -146,7 +146,7 @@ export default function Home() {
           <SectionHeading eyebrow="How It Works" title="Send the picture. We'll handle the rest." />
           <div className="grid md:grid-cols-3 gap-10 md:gap-16 mt-16">
             {[
-              { icon: Camera, step: "01", title: "Send a Photo", text: "Snap or screenshot the outfit you love and send it to us on WhatsApp — or pick something straight from the catalogue." },
+              { icon: Camera, step: "01", title: "Send a Photo", text: "Snap or screenshot the outfit you love and send it to us on WhatsApp, or pick something straight from the catalogue." },
               { icon: MessageSquare, step: "02", title: "We Source It", text: "We find, curate and arrange your item from our trusted network, confirming quality and price with you." },
               { icon: Truck, step: "03", title: "Delivered To You", text: "Receive your piece in Lusaka within 7–14 working days, with updates every step of the way." },
             ].map((s, i) => (
@@ -177,7 +177,7 @@ export default function Home() {
           <SectionHeading
             eyebrow="Browse By Category"
             title="What will you find today?"
-            subtitle="A glimpse of our collections — the full catalogue is waiting inside."
+            subtitle="A glimpse of our collections. The full catalogue is waiting inside."
           />
           <div className="mt-14 grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
             {CATEGORIES.map((c, i) => (

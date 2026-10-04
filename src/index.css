@@ -131,6 +131,15 @@ html {
 ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 9999px; }
 ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
 
+/* Fixed bottom navigation clearance & safe areas (iPhone home indicator).
+   Media-scoped so desktop layouts are untouched and Tailwind classes never conflict. */
+@layer utilities {
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  @media (max-width: 1023.98px) {
+    .pb-bottomnav { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+  }
+}
+
 /* Hide scrollbar for horizontal carousels */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; }

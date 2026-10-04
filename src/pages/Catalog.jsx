@@ -445,7 +445,7 @@ export default function Catalog() {
                     {newArrivalBanner.name}
                   </button>
                   <p className="text-xs text-muted-foreground">
-                    Just added in {newArrivalBanner.category} — {formatKwachaPrice(newArrivalBanner.price)}
+                    Just added in {newArrivalBanner.category} at {formatKwachaPrice(newArrivalBanner.price)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 self-start sm:self-center">

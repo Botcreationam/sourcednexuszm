@@ -29,8 +29,8 @@ export function buildCartInquiryWhatsAppMessage({
 } = {}) {
   const isPreorder = inquiryType === "preorder";
   const header = isPreorder
-    ? "✨ *NEW PRE-ORDER REQUEST — SOURCED NEXUS*"
-    : "✨ *NEW PRODUCT INQUIRY & QUOTE REQUEST — SOURCED NEXUS*";
+    ? "*NEW PRE-ORDER REQUEST | SOURCED NEXUS*"
+    : "*NEW PRODUCT INQUIRY & QUOTE REQUEST | SOURCED NEXUS*";
 
   const customerSection = [
     "*Customer Details:*",

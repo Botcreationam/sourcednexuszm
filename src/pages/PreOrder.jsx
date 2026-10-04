@@ -135,7 +135,7 @@ export default function PreOrder() {
           <ScrollReveal>
             <img
               src="https://media.base44.com/images/public/6abc6a8a4b6c9d175aa35566/ff7228f03_cd0cf427-6a7a-41ef-b652-2d47772ddf5b.jpeg"
-              alt="Sourced Nexus — Pre-Order Now: Curated Luxury, Sourced For You"
+              alt="Sourced Nexus | Pre-Order Now: Curated Luxury, Sourced For You"
               className="w-full h-auto shadow-lg"
             />
           </ScrollReveal>

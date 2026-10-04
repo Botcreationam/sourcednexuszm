@@ -121,8 +121,8 @@ export default function ProductDetail() {
       el.setAttribute("content", content);
     };
     const img = product.images?.[0];
-    const desc = product.description || `Curated ${product.category} — ${product.price || "Price on request"}. Sourced Nexus, Lusaka.`;
-    document.title = `${product.name} — Sourced Nexus`;
+    const desc = product.description || `Curated ${product.category} for ${product.price || "Price on request"}. Sourced Nexus, Lusaka.`;
+    document.title = `${product.name} | Sourced Nexus`;
     setMeta("property", "og:title", product.name);
     setMeta("property", "og:description", desc);
     setMeta("property", "og:url", window.location.href);

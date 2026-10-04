@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, LogOut, Sliders, Heart, ShoppingBag, MessageSquare, Home, Bell } from "lucide-react";
+import { Menu, X, LogOut, Sliders, Heart, ShoppingBag, MessageSquare, Home, Bell, Store } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import { supabase } from "@/lib/supabase";
@@ -19,9 +19,52 @@ const LINKS = [
   { label: "Contact", to: "/contact" },
 ];
 
+// Mobile hamburger shows only secondary sections. The primary sections
+// (Home, Shop, Saved, Inbox, Cart) live exclusively in the bottom navigation
+// so the navigation never appears duplicated on mobile screens.
+const MOBILE_MENU_LINKS = [
+  { label: "Categories", to: "/categories" },
+  { label: "How It Works", to: "/how-it-works" },
+  { label: "Pre-Order", to: "/pre-order" },
+  { label: "Contact", to: "/contact" },
+];
+
+/**
+ * One tab of the mobile bottom navigation.
+ * Active state uses the brand gold (#C5A059) with a top indicator bar.
+ */
+function NavTab({ icon: Icon, label, active = false, onClick, badge = 0, badgeClass = "" }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      aria-current={active ? "page" : undefined}
+      className={`relative flex flex-col items-center justify-center h-full gap-1 transition-colors ${
+        active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {active && (
+        <span className="absolute top-0 inset-x-4 h-[2px] bg-[#C5A059]" aria-hidden="true" />
+      )}
+      <span className="relative">
+        <Icon className={`w-5 h-5 ${active ? "text-[#C5A059]" : ""}`} strokeWidth={active ? 2 : 1.75} />
+        {badge > 0 && (
+          <span
+            className={`absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[9px] font-bold ${badgeClass}`}
+          >
+            {badge > 9 ? "9+" : badge}
+          </span>
+        )}
+      </span>
+      <span className={`text-[9px] uppercase tracking-wide-2 ${active ? "font-medium" : ""}`}>{label}</span>
+    </button>
+  );
+}
+
 export default function Navbar() {
   const { user, isAuthenticated } = useAuth();
-  const { cartCount, wishlistCount, openCart, openWishlist } = useCart();
+  const { cartCount, wishlistCount, isCartOpen, isWishlistOpen, openCart, openWishlist } = useCart();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [preferencesOpen, setPreferencesOpen] = useState(false);
@@ -205,7 +248,9 @@ export default function Navbar() {
               </div>
             </div>
 
-            {/* Mobile Header Controls */}
+            {/* Mobile Header Controls: theme, notifications and secondary menu only.
+                Primary navigation (Home, Shop, Saved, Inbox, Cart) lives in the
+                fixed bottom bar so it never duplicates at the top of the screen. */}
             <div className="flex items-center gap-1 lg:hidden">
               <ModeToggle />
               {isAuthenticated && (
@@ -213,6 +258,7 @@ export default function Navbar() {
                   type="button"
                   onClick={() => setNotificationsOpen(true)}
                   className="relative p-2 text-foreground/80 hover:text-foreground"
+                  aria-label="Notifications"
                 >
                   <Bell className="w-5 h-5" />
                   {unreadMessages > 0 && (
@@ -222,19 +268,6 @@ export default function Navbar() {
                   )}
                 </button>
               )}
-              <button
-                type="button"
-                onClick={openWishlist}
-                className="relative p-2 text-foreground/80 hover:text-foreground"
-                aria-label={`Wishlist (${wishlistCount} items)`}
-              >
-                <Heart className="w-5 h-5" />
-                {wishlistCount > 0 && (
-                  <span className="absolute top-1 right-1 bg-red-500 text-white text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
-                    {wishlistCount}
-                  </span>
-                )}
-              </button>
               <button
                 className="p-2 -mr-1"
                 onClick={() => setOpen((v) => !v)}
@@ -254,7 +287,7 @@ export default function Navbar() {
           }`}
         >
           <div className="flex flex-col px-5 py-4 gap-1">
-            {LINKS.map((l) => (
+            {MOBILE_MENU_LINKS.map((l) => (
               <button
                 key={l.label}
                 onClick={() => handleNav(l.to)}
@@ -270,17 +303,6 @@ export default function Navbar() {
                   className="text-left py-3 text-sm tracking-wide-2 uppercase border-b border-border/60 flex items-center justify-between text-[#C5A059]"
                 >
                   Notifications
-                </button>
-                <button
-                  onClick={() => handleNav("/messages")}
-                  className="text-left py-3 text-sm tracking-wide-2 uppercase border-b border-border/60 flex items-center justify-between text-[#C5A059]"
-                >
-                  Messages
-                  {unreadMessages > 0 && (
-                    <span className="bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                      {unreadMessages} New
-                    </span>
-                  )}
                 </button>
               </>
             )}
@@ -323,46 +345,52 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* Mobile Bottom Navigation */}
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-background border-t border-border flex items-center h-[60px] pb-safe relative">
-        <button
-          onClick={() => handleNav("/")}
-          className="absolute left-6 flex flex-col items-center justify-center h-full text-muted-foreground hover:text-foreground"
-        >
-          <Home className="w-5 h-5 mb-1" />
-          <span className="text-[9px] uppercase tracking-wide-2">Home</span>
-        </button>
-
-        <button
-          onClick={() => handleNav("/messages")}
-          className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center justify-center h-full text-muted-foreground hover:text-foreground"
-        >
-          <div className="relative">
-            <MessageSquare className="w-5 h-5 mb-1" />
-            {unreadMessages > 0 && (
-              <span className="absolute -top-1 -right-2 bg-blue-500 text-white text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
-                {unreadMessages}
-              </span>
-            )}
-          </div>
-          <span className="text-[9px] uppercase tracking-wide-2">Inbox</span>
-        </button>
-
-        <button
-          onClick={openCart}
-          className="absolute right-6 flex flex-col items-center justify-center h-full text-muted-foreground hover:text-foreground"
-        >
-          <div className="relative">
-            <ShoppingBag className="w-5 h-5 mb-1" />
-            {cartCount > 0 && (
-              <span className="absolute -top-1 -right-2 bg-[#C5A059] text-black text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
-                {cartCount}
-              </span>
-            )}
-          </div>
-          <span className="text-[9px] uppercase tracking-wide-2">Cart</span>
-        </button>
-      </div>
+      {/* Mobile & Tablet Bottom Navigation (primary navigation below lg).
+          Fixed to the viewport bottom, never covers content (SiteLayout/Footer
+          provide matching bottom padding) and supports iPhone safe areas. */}
+      <nav
+        className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-background/95 backdrop-blur-md border-t border-border pb-safe"
+        aria-label="Primary"
+      >
+        <div className="grid grid-cols-5 h-[60px] items-center">
+          <NavTab
+            icon={Home}
+            label="Home"
+            active={location.pathname === "/"}
+            onClick={() => handleNav("/")}
+          />
+          <NavTab
+            icon={Store}
+            label="Shop"
+            active={location.pathname.startsWith("/catalog") || location.pathname.startsWith("/categories")}
+            onClick={() => handleNav("/catalog")}
+          />
+          <NavTab
+            icon={Heart}
+            label="Saved"
+            active={isWishlistOpen}
+            onClick={openWishlist}
+            badge={wishlistCount}
+            badgeClass="bg-red-500 text-white"
+          />
+          <NavTab
+            icon={MessageSquare}
+            label="Inbox"
+            active={location.pathname.startsWith("/messages")}
+            onClick={() => handleNav("/messages")}
+            badge={unreadMessages}
+            badgeClass="bg-blue-500 text-white"
+          />
+          <NavTab
+            icon={ShoppingBag}
+            label="Cart"
+            active={isCartOpen}
+            onClick={openCart}
+            badge={cartCount}
+            badgeClass="bg-[#C5A059] text-black"
+          />
+        </div>
+      </nav>
 
       {/* Preferences & Interests Modals */}
       <PreferencesModal
