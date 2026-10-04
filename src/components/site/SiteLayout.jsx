@@ -16,6 +16,7 @@ export default function SiteLayout() {
   const [showFirstTimeOnboarding, setShowFirstTimeOnboarding] = useState(false);
   const location = useLocation();
   const hideFooter = location.pathname.startsWith("/messages");
+  const isLandingPage = location.pathname === "/";
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -36,7 +37,7 @@ export default function SiteLayout() {
       <main className="flex-1">
         <Outlet />
       </main>
-      {!hideFooter && <Footer />}
+      {!hideFooter && <Footer noBottomNavSpace={isLandingPage} />}
       <WhatsAppFloat />
 
       {/* Cart, Wishlist, and Inquiry Slide-Overs */}

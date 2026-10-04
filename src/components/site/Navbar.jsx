@@ -347,7 +347,10 @@ export default function Navbar() {
 
       {/* Mobile & Tablet Bottom Navigation (primary navigation below lg).
           Fixed to the viewport bottom, never covers content (SiteLayout/Footer
-          provide matching bottom padding) and supports iPhone safe areas. */}
+          provide matching bottom padding) and supports iPhone safe areas.
+          Hidden on the public landing page ("/"): that page is marketing, not
+          the shopping experience, so it must not show shopping navigation. */}
+      {location.pathname !== "/" && (
       <nav
         className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-background/95 backdrop-blur-md border-t border-border pb-safe"
         aria-label="Primary"
@@ -391,6 +394,7 @@ export default function Navbar() {
           />
         </div>
       </nav>
+      )}
 
       {/* Preferences & Interests Modals */}
       <PreferencesModal

@@ -2,9 +2,9 @@ import { Link } from "react-router-dom";
 import { Instagram, Facebook, Mail } from "lucide-react";
 import { WHATSAPP_DISPLAY, buildWhatsAppUrl, generalInquiryMessage } from "@/lib/whatsapp";
 
-export default function Footer() {
+export default function Footer({ noBottomNavSpace = false }) {
   return (
-    <footer className="bg-zinc-950 text-zinc-50 pb-bottomnav">
+    <footer className={`bg-zinc-950 text-zinc-50 ${noBottomNavSpace ? "" : "pb-bottomnav"}`}>
       <div className="mx-auto max-w-7xl px-5 md:px-8 py-16 md:py-20">
         <div className="grid gap-12 md:grid-cols-4">
           <div className="md:col-span-1">
