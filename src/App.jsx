@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
 import Home from './pages/Home';
+import Checkout from './pages/Checkout';
 import Catalog from './pages/Catalog';
 import ProductDetail from './pages/ProductDetail';
 import Categories from './pages/Categories';
@@ -28,6 +29,7 @@ import Dashboard from './pages/admin/Dashboard';
 import AdminProducts from './pages/admin/AdminProducts';
 import AdminCategories from './pages/admin/AdminCategories';
 import AdminPreorders from './pages/admin/AdminPreorders';
+import AdminOrders from './pages/admin/AdminOrders';
 import AdminInquiries from './pages/admin/AdminInquiries';
 import AdminInbox from './pages/admin/AdminInbox';
 import AdminModeration from './pages/admin/AdminModeration';
@@ -68,6 +70,7 @@ const AuthenticatedApp = () => {
         <Route path="/refund-policy" element={<RefundPolicy />} />
         <Route path="/terms" element={<TermsAndConditions />} />
         <Route path="/messages" element={<Messages />} />
+        <Route path="/checkout" element={<Checkout />} />
       </Route>
 
       {/* Admin */}
@@ -78,6 +81,7 @@ const AuthenticatedApp = () => {
         <Route path="products" element={<AdminProducts />} />
         <Route path="categories" element={<AdminCategories />} />
         <Route path="preorders" element={<AdminPreorders />} />
+        <Route path="orders" element={<AdminOrders />} />
         <Route path="moderation" element={<AdminModeration />} />
       </Route>
 

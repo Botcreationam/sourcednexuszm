@@ -1,5 +1,5 @@
-import { Link } from "react-router-dom";
-import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, ShieldCheck } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, ShieldCheck, CreditCard } from "lucide-react";
 import { useCart } from "@/lib/CartContext";
 import { formatKwachaPrice } from "@/lib/utils";
 
@@ -15,11 +15,18 @@ export default function CartDrawer() {
     openInquiryModal,
   } = useCart();
 
+  const navigate = useNavigate();
+
   if (!isCartOpen) return null;
 
   const handleStartInquiry = () => {
     closeCart();
     openInquiryModal(cart);
+  };
+
+  const handleGoToCheckout = () => {
+    closeCart();
+    navigate("/checkout");
   };
 
   return (
@@ -211,6 +218,15 @@ export default function CartDrawer() {
               >
                 <span>Request a Quote / Send Inquiry</span>
                 <ArrowRight className="w-4 h-4" />
+              </button>
+
+              {/* Online payment via Lenco — additional option, inquiry flow untouched */}
+              <button
+                onClick={handleGoToCheckout}
+                className="w-full border border-[#C5A059]/60 hover:border-[#C5A059] text-foreground py-3.5 px-4 text-xs tracking-wide-2 uppercase font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <CreditCard className="w-4 h-4 text-[#C5A059]" />
+                <span>Pay Online with Lenco</span>
               </button>
 
               <div className="flex items-center justify-center gap-1.5 text-[10px] text-zinc-500">
