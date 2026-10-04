@@ -461,7 +461,7 @@ const server = http.createServer((req, res) => {
             return;
           }
 
-          // Sanitize items and preserve exact images
+          // Sanitize items, preserving the customer's selected grade, images and specs
           const sanitizedItems = items.map((item, idx) => ({
             id: String(item.id || `item-${idx + 1}`),
             name: String(item.name || 'Unnamed Product').slice(0, 150),
@@ -471,9 +471,16 @@ const server = http.createServer((req, res) => {
             quantity: Math.max(1, Math.min(100, Number(item.quantity) || 1)),
             selectedSize: item.selectedSize ? String(item.selectedSize).slice(0, 30) : null,
             selectedColor: item.selectedColor ? String(item.selectedColor).slice(0, 30) : null,
+            selectedGrade: item.selectedGrade && typeof item.selectedGrade === 'object' ? {
+              name: item.selectedGrade.name ? String(item.selectedGrade.name).slice(0, 50) : null,
+              price: item.selectedGrade.price != null ? String(item.selectedGrade.price).slice(0, 50) : null,
+              originalPrice: item.selectedGrade.originalPrice != null ? String(item.selectedGrade.originalPrice).slice(0, 50) : null,
+              discount: Number.isFinite(Number(item.selectedGrade.discount)) ? Number(item.selectedGrade.discount) : null,
+            } : null,
             specifications: item.specifications ? String(item.specifications).slice(0, 300) : '',
           }));
 
+          const estimatedTotal = Number(payload.estimated_total);
           const record = {
             id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined,
             user_id: payload.user_id || null,
@@ -488,6 +495,8 @@ const server = http.createServer((req, res) => {
             status: 'Pending',
             source: payload.source === 'whatsapp' ? 'whatsapp' : 'website',
             ip_address: ip,
+            estimated_total: Number.isFinite(estimatedTotal) && estimatedTotal >= 0 ? Math.min(estimatedTotal, 10_000_000) : 0,
+            preferred_contact: ['whatsapp', 'email', 'phone'].includes(payload.preferred_contact) ? payload.preferred_contact : 'whatsapp',
           };
 
           const env = getClientEnv();

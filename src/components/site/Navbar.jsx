@@ -13,6 +13,7 @@ import { ModeToggle } from "@/components/ModeToggle";
 const LINKS = [
   { label: "Home", to: "/" },
   { label: "Shop", to: "/catalog" },
+  { label: "New Arrivals", to: "/catalog?sort=newest" },
   { label: "Categories", to: "/categories" },
   { label: "How It Works", to: "/how-it-works" },
   { label: "Pre-Order", to: "/pre-order" },
@@ -23,6 +24,7 @@ const LINKS = [
 // (Home, Shop, Saved, Inbox, Cart) live exclusively in the bottom navigation
 // so the navigation never appears duplicated on mobile screens.
 const MOBILE_MENU_LINKS = [
+  { label: "New Arrivals", to: "/catalog?sort=newest" },
   { label: "Categories", to: "/categories" },
   { label: "How It Works", to: "/how-it-works" },
   { label: "Pre-Order", to: "/pre-order" },

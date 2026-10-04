@@ -35,6 +35,12 @@ export default async function handler(req, res) {
       quantity: Math.max(1, Math.min(100, Number(item.quantity) || 1)),
       selectedSize: item.selectedSize ? String(item.selectedSize).slice(0, 30) : null,
       selectedColor: item.selectedColor ? String(item.selectedColor).slice(0, 30) : null,
+      selectedGrade: item.selectedGrade && typeof item.selectedGrade === 'object' ? {
+        name: item.selectedGrade.name ? String(item.selectedGrade.name).slice(0, 50) : null,
+        price: item.selectedGrade.price != null ? String(item.selectedGrade.price).slice(0, 50) : null,
+        originalPrice: item.selectedGrade.originalPrice != null ? String(item.selectedGrade.originalPrice).slice(0, 50) : null,
+        discount: Number.isFinite(Number(item.selectedGrade.discount)) ? Number(item.selectedGrade.discount) : null,
+      } : null,
       specifications: item.specifications ? String(item.specifications).slice(0, 300) : '',
     }));
 
@@ -53,6 +59,8 @@ export default async function handler(req, res) {
       status: 'Pending',
       source: payload.source === 'whatsapp' ? 'whatsapp' : 'website',
       ip_address: clientIp.split(',')[0].trim(),
+      estimated_total: Number.isFinite(Number(payload.estimated_total)) && payload.estimated_total >= 0 ? Math.min(Number(payload.estimated_total), 10_000_000) : 0,
+      preferred_contact: ['whatsapp', 'email', 'phone'].includes(payload.preferred_contact) ? payload.preferred_contact : 'whatsapp',
     };
 
     const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://zprzxqdcqeywopwxouzu.supabase.co';
