@@ -66,6 +66,12 @@ export default function ProductCard({ product }) {
     recordProductView(product);
   };
 
+  // Lowest available grade price for graded products ("From K...")
+  const lowestGradePrice = (product.grades || [])
+    .map((g) => parseFloat(String(g.price ?? "").replace(/[^0-9.]/g, "")))
+    .filter((n) => !Number.isNaN(n) && n > 0)
+    .sort((a, b) => a - b)[0] || product.price;
+
   return (
     <div className="group snap-start relative h-full flex flex-col justify-between">
       <div>
@@ -121,7 +127,11 @@ export default function ProductCard({ product }) {
               {product.name}
             </h3>
           </Link>
-          <p className="text-sm font-light text-foreground">{formatKwachaPrice(product.price)}</p>
+          <p className="text-sm font-light text-foreground">
+            {product.grades?.length
+              ? <>From {formatKwachaPrice(lowestGradePrice)}</>
+              : formatKwachaPrice(product.price)}
+          </p>
         </div>
       </div>
 

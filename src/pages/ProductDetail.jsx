@@ -5,7 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { buildWhatsAppUrl, buildCartInquiryWhatsAppMessage, WHATSAPP_DISPLAY } from "@/lib/whatsapp";
 import { formatKwachaPrice } from "@/lib/utils";
-import { recordProductView } from "@/lib/recommendations";
+import { recordProductView, recordCategoryView } from "@/lib/recommendations";
 import { useCart } from "@/lib/CartContext";
 import { toast } from "@/components/ui/use-toast";
 import ScrollReveal from "@/components/site/ScrollReveal";
@@ -13,6 +13,7 @@ import ShareBar from "@/components/site/ShareBar";
 import BrandedLoader from "@/components/BrandedLoader";
 import ProductChat from "@/components/site/ProductChat";
 import ProductInteractions from "@/components/site/ProductInteractions";
+import HorizontalProductSection from "@/components/site/HorizontalProductSection";
 
 const STATUS_LABELS = { available: "Available", preorder: "Pre-Order", soldout: "Sold Out" };
 
@@ -24,6 +25,7 @@ export default function ProductDetail() {
   const [lightbox, setLightbox] = useState(false);
   const [metrics, setMetrics] = useState({ view_count: 0, like_count: 0, review_count: 0, average_rating: 0 });
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [relatedProducts, setRelatedProducts] = useState([]);
 
   // Cart & Options State
   // Cart & Options State
@@ -51,6 +53,7 @@ export default function ProductDetail() {
           if (data && !error) {
             setProduct(data);
             recordProductView(data);
+            recordCategoryView(data.category);
             
             // Fetch metrics
             const { data: metricsData } = await supabase.from("product_metrics").select("*").eq("product_id", id).maybeSingle();
@@ -68,6 +71,7 @@ export default function ProductDetail() {
         setProduct(bProduct);
         if (bProduct) {
           recordProductView(bProduct);
+          recordCategoryView(bProduct.category);
           if (bProduct.sizes?.length) setSelectedSize(bProduct.sizes[0]);
           if (bProduct.colors?.length) setSelectedColor(bProduct.colors[0]);
           if (bProduct.grades?.length) setSelectedGrade(bProduct.grades[0]);
@@ -81,6 +85,32 @@ export default function ProductDetail() {
     }
     loadProduct();
   }, [id]);
+
+  // Related products: same category (excluding this product) for
+  // "You May Also Like" / "More From This Category" recommendations
+  useEffect(() => {
+    if (!product?.id || !product?.category) return;
+    let cancelled = false;
+    async function loadRelated() {
+      try {
+        if (isSupabaseConfigured && supabase) {
+          const { data, error } = await supabase
+            .from("products")
+            .select("*")
+            .eq("category", product.category)
+            .neq("id", product.id)
+            .neq("status", "hidden")
+            .order("is_popular", { ascending: false })
+            .limit(8);
+          if (!cancelled && !error && data) setRelatedProducts(data);
+        }
+      } catch (err) {
+        console.warn("Could not load related products:", err);
+      }
+    }
+    loadRelated();
+    return () => { cancelled = true; };
+  }, [product?.id, product?.category]);
 
   // Dynamically update social preview meta tags for this product
   useEffect(() => {
@@ -155,6 +185,8 @@ export default function ProductDetail() {
       specifications,
       selectedImage: exactSelectedImage,
       price: currentPrice,
+      originalPrice,
+      discountPercentage: discountPercent,
       openDrawer: true,
     });
     toast({
@@ -474,6 +506,16 @@ export default function ProductDetail() {
           </div>
         </div>
       </div>
+
+      {/* Related Products — category-based recommendations */}
+      {relatedProducts.length > 0 && (
+        <HorizontalProductSection
+          eyebrow="You May Also Like"
+          title={`More From ${product.category}`}
+          products={relatedProducts}
+          viewAllTo={`/catalog?category=${encodeURIComponent(product.category)}`}
+        />
+      )}
 
       {/* Lightbox */}
       {lightbox && images[activeImg] && (

@@ -1,18 +1,10 @@
-import { useEffect, useState, useMemo } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Camera, Truck, MessageSquare, SlidersHorizontal, Compass } from "lucide-react";
-import { base44 } from "@/api/base44Client";
-import { isSupabaseConfigured, getSupabaseProducts } from "@/lib/supabase";
-import { useAuth } from "@/lib/AuthContext";
-import { rankProductsForYou, getStoredInterests } from "@/lib/recommendations";
+import { ArrowRight, Camera, Truck, MessageSquare, ShieldCheck, Sparkles, Package } from "lucide-react";
 import { buildWhatsAppUrl, photoSourcingMessage, WHATSAPP_DISPLAY } from "@/lib/whatsapp";
 import ScrollReveal from "@/components/site/ScrollReveal";
-import HorizontalProductSection from "@/components/site/HorizontalProductSection";
 import SectionHeading from "@/components/site/SectionHeading";
-import BrandedLoader from "@/components/BrandedLoader";
 import PhotoChoiceModal from "@/components/site/PhotoChoiceModal";
-import OnboardingModal from "@/components/site/OnboardingModal";
-import PreferencesModal from "@/components/site/PreferencesModal";
 
 const HERO_IMAGES = [
   "https://media.base44.com/images/public/6abc6a8a4b6c9d175aa35566/d51d95ee0_IMG_7842.jpeg",
@@ -31,61 +23,7 @@ const CATEGORIES = [
 ];
 
 export default function Home() {
-  const { user } = useAuth();
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
-  const [interestsModalOpen, setInterestsModalOpen] = useState(false);
-  const [preferencesModalOpen, setPreferencesModalOpen] = useState(false);
-  const [recRefreshKey, setRecRefreshKey] = useState(0);
-
-  useEffect(() => {
-    async function loadProducts() {
-      try {
-        if (isSupabaseConfigured) {
-          const sp = await getSupabaseProducts();
-          if (sp && sp.length > 0) {
-            setProducts(sp);
-            setLoading(false);
-            return;
-          }
-        }
-        const bProducts = await base44.entities.Product.list("-created_date", 100);
-        setProducts(bProducts || []);
-      } catch (err) {
-        console.error("Failed to load products on home:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadProducts();
-  }, []);
-
-  // Listen for user preference updates or resets
-  useEffect(() => {
-    const handleUpdate = () => setRecRefreshKey((k) => k + 1);
-    window.addEventListener("sn:interests_updated", handleUpdate);
-    window.addEventListener("sn:likes_updated", handleUpdate);
-    window.addEventListener("sn:activity_updated", handleUpdate);
-    window.addEventListener("sn:personalization_reset", handleUpdate);
-    return () => {
-      window.removeEventListener("sn:interests_updated", handleUpdate);
-      window.removeEventListener("sn:likes_updated", handleUpdate);
-      window.removeEventListener("sn:activity_updated", handleUpdate);
-      window.removeEventListener("sn:personalization_reset", handleUpdate);
-    };
-  }, []);
-
-  // Compute TikTok-style FYP personalized ranking and discovery sets
-  const { forYouSection, discoverySection, hasPersonalization } = useMemo(() => {
-    const currentInterests = user?.user_metadata?.interests || getStoredInterests();
-    return rankProductsForYou(products, { interests: currentInterests });
-  }, [products, user, recRefreshKey]);
-
-  const newArrivals = products.filter((p) => p.is_new_arrival).slice(0, 12);
-  const popular = products.filter((p) => p.is_popular).slice(0, 12);
-  const byCategory = (cat) => products.filter((p) => p.category === cat).slice(0, 12);
-
 
   return (
     <div>
@@ -121,13 +59,14 @@ export default function Home() {
           </ScrollReveal>
           <ScrollReveal delay={0.4}>
             <p className="mt-6 text-sm md:text-base font-light text-foreground/70 max-w-lg mx-auto">
-              See the perfect outfit, gadget, or luxury timepiece? Send us a photo or link and we'll handle the rest.
+              Sourced Nexus is your personal sourcing and shopping platform. Browse curated fashion, luxury
+              timepieces and electronics, or send us a photo of anything you love and we'll source and deliver it.
             </p>
           </ScrollReveal>
           <ScrollReveal delay={0.55}>
             <div className="mt-9 flex flex-col sm:flex-row gap-3 justify-center">
               <Link to="/catalog" className="group inline-flex items-center justify-center gap-2 bg-foreground text-background px-8 py-4 text-[11px] tracking-wide-2 uppercase hover:bg-foreground/85 transition-colors">
-                Browse Catalog <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                Start Shopping <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
               <button
                 onClick={() => setPhotoModalOpen(true)}
@@ -155,15 +94,61 @@ export default function Home() {
         </div>
       </div>
 
+      {/* WHAT YOU'LL FIND */}
+      <section className="py-20 md:py-28">
+        <div className="mx-auto max-w-7xl px-5 md:px-8">
+          <SectionHeading
+            eyebrow="What We Offer"
+            title="Everything you love, sourced with care."
+            subtitle="From everyday fashion to luxury pieces — explore ready-to-order items or let us source something special just for you."
+          />
+          <div className="grid md:grid-cols-3 gap-10 md:gap-16 mt-16">
+            {[
+              {
+                icon: Sparkles,
+                title: "Curated Catalogue",
+                text: "Browse suits, dresses, watches, shoes, electronics and more — each piece hand-picked by our team, with clear grades and pricing.",
+              },
+              {
+                icon: Package,
+                title: "Product Grades",
+                text: "Choose First, Second or Third Grade on graded items — each with its own price, so you always know exactly what you're paying for.",
+              },
+              {
+                icon: Camera,
+                title: "Custom Sourcing",
+                text: "Can't find it in the catalogue? Send a photo or link and we'll source it through our trusted international network.",
+              },
+            ].map((s, i) => (
+              <ScrollReveal key={s.title} delay={i * 0.15} className="text-center">
+                <div className="mx-auto w-14 h-14 border border-border flex items-center justify-center mb-6">
+                  <s.icon className="w-5 h-5" strokeWidth={1} />
+                </div>
+                <h3 className="font-display text-2xl mb-2">{s.title}</h3>
+                <p className="text-sm font-light text-muted-foreground max-w-xs mx-auto">{s.text}</p>
+              </ScrollReveal>
+            ))}
+          </div>
+          <div className="mt-12 text-center">
+            <Link
+              to="/catalog"
+              className="inline-flex items-center gap-2 bg-foreground text-background px-8 py-4 text-[11px] tracking-wide-2 uppercase hover:bg-foreground/85 transition-colors"
+            >
+              Start Shopping <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* HOW IT WORKS */}
       <section id="how-it-works" className="py-20 md:py-28">
         <div className="mx-auto max-w-7xl px-5 md:px-8">
           <SectionHeading eyebrow="How It Works" title="Send the picture. We'll handle the rest." />
           <div className="grid md:grid-cols-3 gap-10 md:gap-16 mt-16">
             {[
-              { icon: Camera, step: "01", title: "Send a Photo", text: "Snap or screenshot the outfit you love and send it to us on WhatsApp." },
-              { icon: MessageSquare, step: "02", title: "We Source It", text: "We find, curate and arrange your item from our trusted network." },
-              { icon: Truck, step: "03", title: "Delivered To You", text: "Receive your piece in Lusaka within 7–14 working days." },
+              { icon: Camera, step: "01", title: "Send a Photo", text: "Snap or screenshot the outfit you love and send it to us on WhatsApp — or pick something straight from the catalogue." },
+              { icon: MessageSquare, step: "02", title: "We Source It", text: "We find, curate and arrange your item from our trusted network, confirming quality and price with you." },
+              { icon: Truck, step: "03", title: "Delivered To You", text: "Receive your piece in Lusaka within 7–14 working days, with updates every step of the way." },
             ].map((s, i) => (
               <ScrollReveal key={s.step} delay={i * 0.15} className="text-center">
                 <div className="mx-auto w-14 h-14 border border-border flex items-center justify-center mb-6">
@@ -190,11 +175,11 @@ export default function Home() {
       <section className="py-20 md:py-28 bg-secondary/40">
         <div className="mx-auto max-w-7xl px-5 md:px-8">
           <SectionHeading
-            eyebrow="Categories"
-            title="Shop By Category"
-            subtitle="From cutting-edge electronics and luxury watches to couture fashion and footwear."
+            eyebrow="Browse By Category"
+            title="What will you find today?"
+            subtitle="A glimpse of our collections — the full catalogue is waiting inside."
           />
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4 mt-14">
+          <div className="mt-14 grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
             {CATEGORIES.map((c, i) => (
               <ScrollReveal key={c.name} delay={i * 0.08}>
                 <Link to={`/catalog?category=${c.name}`} className="group relative block aspect-[3/4] overflow-hidden">
@@ -208,87 +193,45 @@ export default function Home() {
               </ScrollReveal>
             ))}
           </div>
+          <div className="mt-12 text-center">
+            <Link
+              to="/catalog"
+              className="inline-flex items-center gap-2 border border-foreground/40 px-8 py-4 text-[11px] tracking-wide-2 uppercase hover:bg-foreground hover:text-background transition-colors"
+            >
+              View The Full Catalogue <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
         </div>
       </section>
 
-      {/* HORIZONTAL PRODUCT SECTIONS */}
-      {loading ? (
-        <BrandedLoader fullScreen={false} text="Curating Collection..." />
-      ) : (
-        <>
-          {/* TIKTOK FYP-STYLE PERSONALIZED FEED */}
-          {forYouSection.length > 0 && (
-            <HorizontalProductSection
-              eyebrow={hasPersonalization ? "Personalized For You" : "Recommended Feed"}
-              title="Curated For You"
-              products={forYouSection}
-              viewAllTo="/catalog"
-              action={
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setInterestsModalOpen(true)}
-                    className="inline-flex items-center gap-1.5 text-[10px] tracking-wide-2 uppercase border border-foreground/30 px-3 py-1.5 hover:bg-foreground hover:text-background transition-colors"
-                  >
-                    <span>Tune Interests</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPreferencesModalOpen(true)}
-                    aria-label="Personalization & Privacy Preferences"
-                    className="p-1.5 border border-foreground/30 hover:bg-foreground hover:text-background transition-colors"
-                    title="Privacy & Personalization Settings"
-                  >
-                    <SlidersHorizontal className="w-3.5 h-3.5" />
-                  </button>
+      {/* SOURCING & DELIVERY INFO */}
+      <section className="py-20 md:py-28 border-t border-border">
+        <div className="mx-auto max-w-7xl px-5 md:px-8">
+          <SectionHeading
+            eyebrow="Sourcing & Delivery"
+            title="Straightforward sourcing, honest delivery."
+          />
+          <div className="grid md:grid-cols-3 gap-10 mt-14">
+            {[
+              { icon: ShieldCheck, title: "Quality You Can Trust", text: "Every item is inspected before it ships. Graded products show exactly what each grade includes, at its own price." },
+              { icon: Truck, title: "Delivery Across Lusaka", text: "In-stock and pre-order items arrive within 7–14 working days. We keep you updated from sourcing to doorstep." },
+              { icon: MessageSquare, title: "Talk To A Real Person", text: "Questions about sizing, grades or delivery? Chat with us on WhatsApp any time and get a personal answer." },
+            ].map((s, i) => (
+              <ScrollReveal key={s.title} delay={i * 0.12}>
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 border border-border flex items-center justify-center flex-shrink-0">
+                    <s.icon className="w-4 h-4" strokeWidth={1} />
+                  </div>
+                  <div>
+                    <h3 className="font-display text-xl mb-2">{s.title}</h3>
+                    <p className="text-sm font-light text-muted-foreground">{s.text}</p>
+                  </div>
                 </div>
-              }
-            />
-          )}
-
-          {/* DISCOVERY MECHANISM: OUTSIDE YOUR BUBBLE */}
-          {discoverySection.length > 0 && (
-            <div className="bg-muted/15 border-y border-border/50">
-              <HorizontalProductSection
-                eyebrow="Discovery Horizon"
-                title="Explore Outside Your Bubble"
-                products={discoverySection}
-                viewAllTo="/catalog"
-                action={
-                  <span className="hidden sm:inline-flex items-center gap-1 text-[10px] tracking-wide-2 uppercase text-muted-foreground">
-                    <Compass className="w-3.5 h-3.5 text-primary" /> Serendipity picks
-                  </span>
-                }
-              />
-            </div>
-          )}
-
-          {newArrivals.length > 0 && (
-            <HorizontalProductSection eyebrow="Just In" title="New Arrivals" products={newArrivals} viewAllTo="/catalog" />
-          )}
-          {popular.length > 0 && (
-            <HorizontalProductSection eyebrow="Loved By You" title="Popular Picks" products={popular} viewAllTo="/catalog" />
-          )}
-          {byCategory("Electronics").length > 0 && (
-            <HorizontalProductSection eyebrow="Technology" title="Electronics & Gadgets" products={byCategory("Electronics")} viewAllTo="/catalog?category=Electronics" />
-          )}
-          {byCategory("Watches").length > 0 && (
-            <HorizontalProductSection eyebrow="Horology" title="Luxury Watches" products={byCategory("Watches")} viewAllTo="/catalog?category=Watches" />
-          )}
-          {byCategory("Dresses").length > 0 && (
-            <HorizontalProductSection eyebrow="Collection" title="Dresses" products={byCategory("Dresses")} viewAllTo="/catalog?category=Dresses" />
-          )}
-          {byCategory("Suits").length > 0 && (
-            <HorizontalProductSection eyebrow="Collection" title="Suits" products={byCategory("Suits")} viewAllTo="/catalog?category=Suits" />
-          )}
-          {byCategory("Shoes").length > 0 && (
-            <HorizontalProductSection eyebrow="Collection" title="Shoes" products={byCategory("Shoes")} viewAllTo="/catalog?category=Shoes" />
-          )}
-          {byCategory("Heels").length > 0 && (
-            <HorizontalProductSection eyebrow="Collection" title="Heels" products={byCategory("Heels")} viewAllTo="/catalog?category=Heels" />
-          )}
-        </>
-      )}
+              </ScrollReveal>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* PRE-ORDER CTA */}
       <section className="relative py-24 md:py-32 bg-zinc-950 text-zinc-50 overflow-hidden">
@@ -316,20 +259,6 @@ export default function Home() {
 
       {/* Choice Modal for Photo Sourcing */}
       <PhotoChoiceModal open={photoModalOpen} onClose={() => setPhotoModalOpen(false)} />
-
-      {/* Shopping Interests Onboarding & Customization Modal */}
-      <OnboardingModal
-        open={interestsModalOpen}
-        onClose={() => setInterestsModalOpen(false)}
-        isEditMode={true}
-      />
-
-      {/* Privacy and Personalization Preferences Modal */}
-      <PreferencesModal
-        open={preferencesModalOpen}
-        onClose={() => setPreferencesModalOpen(false)}
-        onOpenInterests={() => setInterestsModalOpen(true)}
-      />
     </div>
   );
 }

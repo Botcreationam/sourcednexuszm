@@ -2,11 +2,21 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { useAuth } from "./AuthContext";
 import { getUserCartAndWishlist, saveUserCartAndWishlist } from "./supabase";
 import { toggleProductLike, isProductLiked } from "./recommendations";
+import {
+  getCartItemKey,
+  mergeCartItems,
+  mergeWishlists,
+  normalizeCart,
+} from "./cartMerge";
 
 const CartContext = createContext(null);
 
 const CART_STORAGE_KEY = "sn_cart_v1";
 const WISHLIST_STORAGE_KEY = "sn_wishlist_v1";
+// Tracks WHO the locally stored cart belongs to:
+//   "guest"  -> genuine anonymous guest cart, safe to merge into an account on login
+//   <userId> -> an echo of that authenticated account's cart, NEVER merged into another account
+const CART_OWNER_KEY = "sn_cart_owner";
 
 function getLocalData(key, fallback = []) {
   if (typeof window === "undefined") return fallback;
@@ -28,10 +38,24 @@ function setLocalData(key, data) {
   }
 }
 
-// Generate distinct key for cart items by ID + selected size + selected color
-export function getCartItemKey(productId, size = null, color = null) {
-  return `${productId || "item"}_${size || "std"}_${color || "std"}`;
+function getLocalOwner() {
+  if (typeof window === "undefined") return "guest";
+  try {
+    return localStorage.getItem(CART_OWNER_KEY) || "guest";
+  } catch {
+    return "guest";
+  }
 }
+
+function setLocalOwner(owner) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(CART_OWNER_KEY, owner || "guest");
+  } catch {}
+}
+
+// Re-export for backwards compatibility (used by callers importing from CartContext)
+export { getCartItemKey };
 
 export function CartProvider({ children }) {
   const { user, isAuthenticated } = useAuth();
@@ -47,78 +71,114 @@ export function CartProvider({ children }) {
 
   const isInitialSyncDone = useRef(false);
   const prevUserId = useRef(null);
+  // Set while we reset local state on logout so the persist effect doesn't
+  // write the previous account's in-memory cart back to localStorage (this
+  // was the root cause of removed items resurrecting and carts bleeding
+  // between accounts after logout/login).
+  const isResettingRef = useRef(false);
 
-  // 1. Sync guest cart & wishlist to/from database when user logs in
+  // 1. Sync cart & wishlist with the authenticated account.
+  //    - A genuine GUEST cart (owner marker === "guest") is merged into the
+  //      account's database cart once, without duplicates, then marked as the
+  //      account's echo.
+  //    - Local data belonging to any other account is IGNORED (no bleeding).
+  //    - On logout, the in-memory state and local echo are cleared so the next
+  //      account starts clean.
   useEffect(() => {
-    async function syncUserData() {
-      if (!isAuthenticated || !user?.id) {
+    // --- LOGOUT / SIGNED-OUT TRANSITION ---
+    if (!isAuthenticated || !user?.id) {
+      if (prevUserId.current !== null) {
+        // We were signed in and just signed out: wipe local state + echo.
+        isResettingRef.current = true;
         prevUserId.current = null;
         isInitialSyncDone.current = false;
-        return;
+        try {
+          setCart([]);
+          setWishlist([]);
+          setLocalData(CART_STORAGE_KEY, []);
+          setLocalData(WISHLIST_STORAGE_KEY, []);
+          setLocalOwner("guest");
+        } finally {
+          isResettingRef.current = false;
+        }
       }
+      return;
+    }
 
-      if (prevUserId.current === user.id && isInitialSyncDone.current) {
-        return;
-      }
+    // --- LOGIN / SESSION RESTORE ---
+    const userId = user.id;
+    if (prevUserId.current === userId && isInitialSyncDone.current) {
+      return;
+    }
+    prevUserId.current = userId;
 
-      prevUserId.current = user.id;
-
+    let cancelled = false;
+    (async () => {
       try {
-        const dbData = await getUserCartAndWishlist(user.id);
-        const localCart = getLocalData(CART_STORAGE_KEY, []);
-        const localWishlist = getLocalData(WISHLIST_STORAGE_KEY, []);
+        const owner = getLocalOwner();
+        const dbData = await getUserCartAndWishlist(userId);
 
-        // Merge cart: avoid duplicate item keys, favor local or combine quantities
-        const cartMap = new Map();
-        (dbData.cart || []).forEach((item) => {
-          const key = item.itemKey || getCartItemKey(item.id, item.selectedSize, item.selectedColor);
-          cartMap.set(key, { ...item, itemKey: key });
-        });
-        (localCart || []).forEach((item) => {
-          const key = item.itemKey || getCartItemKey(item.id, item.selectedSize, item.selectedColor);
-          if (cartMap.has(key)) {
-            // merge quantity
-            const existing = cartMap.get(key);
-            cartMap.set(key, { ...existing, quantity: Math.max(existing.quantity, item.quantity) });
-          } else {
-            cartMap.set(key, { ...item, itemKey: key });
-          }
-        });
-        const mergedCart = Array.from(cartMap.values());
+        if (cancelled) return;
 
-        // Merge wishlist: avoid duplicate product IDs
-        const wishlistMap = new Map();
-        (dbData.wishlist || []).forEach((item) => {
-          if (item?.id) wishlistMap.set(item.id, item);
-        });
-        (localWishlist || []).forEach((item) => {
-          if (item?.id && !wishlistMap.has(item.id)) {
-            wishlistMap.set(item.id, item);
-          }
-        });
-        const mergedWishlist = Array.from(wishlistMap.values());
+        let mergedCart;
+        let mergedWishlist;
+        let guestDataWasMerged = false;
+
+        if (owner === "guest") {
+          // Genuine anonymous browsing before login -> merge once, no duplicates.
+          const localCart = getLocalData(CART_STORAGE_KEY, []);
+          const localWishlist = getLocalData(WISHLIST_STORAGE_KEY, []);
+          mergedCart = mergeCartItems(dbData.cart, localCart);
+          mergedWishlist = mergeWishlists(dbData.wishlist, localWishlist);
+          guestDataWasMerged = localCart.length > 0 || localWishlist.length > 0;
+        } else if (owner === userId) {
+          // Local data is just this account's echo -> database is authoritative.
+          // This is what makes removals stay removed across logout/login,
+          // refreshes and devices.
+          mergedCart = normalizeCart(dbData.cart);
+          mergedWishlist = dbData.wishlist || [];
+        } else {
+          // Local data belongs to a DIFFERENT account -> discard it entirely.
+          mergedCart = normalizeCart(dbData.cart);
+          mergedWishlist = dbData.wishlist || [];
+        }
 
         setCart(mergedCart);
         setWishlist(mergedWishlist);
         setLocalData(CART_STORAGE_KEY, mergedCart);
         setLocalData(WISHLIST_STORAGE_KEY, mergedWishlist);
+        setLocalOwner(userId);
 
-        // Update database with the merged set
-        await saveUserCartAndWishlist(user.id, mergedCart, mergedWishlist);
+        if (guestDataWasMerged) {
+          // Persist the merged result so the guest items become part of the account.
+          await saveUserCartAndWishlist(userId, mergedCart, mergedWishlist);
+        }
         isInitialSyncDone.current = true;
       } catch (err) {
         console.warn("Failed to sync cart/wishlist with user profile:", err);
       }
-    }
+    })();
 
-    syncUserData();
+    return () => {
+      cancelled = true;
+    };
   }, [isAuthenticated, user?.id]);
 
-  // 2. Persist cart & wishlist changes locally and to DB (if logged in)
+  // 2. Persist cart & wishlist changes locally and to the DB (if logged in).
+  //    While signed out, the owner marker is preserved so a previous account's
+  //    echo is never mistaken for a new guest cart.
   useEffect(() => {
+    if (isResettingRef.current) return;
     setLocalData(CART_STORAGE_KEY, cart);
     setLocalData(WISHLIST_STORAGE_KEY, wishlist);
-    if (isAuthenticated && user?.id && isInitialSyncDone.current) {
+    if (!isAuthenticated || !user?.id) {
+      // Preserve an existing account echo marker; otherwise mark as guest data.
+      const owner = getLocalOwner();
+      if (owner === "guest") setLocalOwner("guest");
+      return;
+    }
+    setLocalOwner(user.id);
+    if (isInitialSyncDone.current) {
       // Save immediately to avoid data loss on page unload/logout
       saveUserCartAndWishlist(user.id, cart, wishlist);
     }
@@ -132,6 +192,7 @@ export function CartProvider({ children }) {
       quantity = 1,
       selectedSize = null,
       selectedColor = null,
+      selectedGrade = null,
       specifications = "",
       openDrawer = true,
     } = options;
@@ -143,7 +204,19 @@ export function CartProvider({ children }) {
       product.image ||
       null;
 
-    const itemKey = getCartItemKey(product.id, selectedSize, selectedColor);
+    // Preserve the selected grade exactly: the grade name is part of the line
+    // item key so two grades of the same product are two separate lines, and
+    // the grade's own price/original price/discount are locked into the item.
+    const gradeName = selectedGrade?.name || null;
+    const itemKey = getCartItemKey(product.id, selectedSize, selectedColor, gradeName);
+    const gradePrice =
+      options.price !== undefined && options.price !== null
+        ? options.price
+        : selectedGrade?.price ?? product.price ?? "Price on Request";
+    const gradeOriginalPrice =
+      options.originalPrice ?? selectedGrade?.original_price ?? null;
+    const gradeDiscount =
+      options.discountPercentage ?? selectedGrade?.discount_percentage ?? null;
 
     setCart((prev) => {
       const index = prev.findIndex((i) => i.itemKey === itemKey);
@@ -162,11 +235,19 @@ export function CartProvider({ children }) {
         id: product.id,
         name: product.name,
         category: product.category || "General",
-        price: product.price || "Price on Request",
+        price: gradePrice,
         image: exactImage,
         quantity: Math.max(1, Number(quantity || 1)),
         selectedSize: selectedSize || null,
         selectedColor: selectedColor || null,
+        // Grade data (locked at add-to-cart time). selectedGrade is kept as an
+        // object so the existing InquiryModal / WhatsApp builders keep working.
+        selectedGrade: selectedGrade || null,
+        gradeName,
+        gradePrice,
+        gradeOriginalPrice,
+        gradeDiscount,
+        gradeStockStatus: selectedGrade?.stock_status || null,
         specifications: specifications || "",
         addedAt: new Date().toISOString(),
       };

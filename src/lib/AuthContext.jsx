@@ -3,6 +3,7 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { ADMIN_EMAIL, isAuthorizedAdmin } from '@/lib/adminAccess';
+import { claimVisitorActivityOnLogin } from '@/lib/recommendations';
 
 const AuthContext = createContext();
 
@@ -101,6 +102,10 @@ export const AuthProvider = ({ children }) => {
             setIsAuthenticated(true);
             const isAdm = await checkDatabaseAdminRole(u.id, u.email);
             setIsAdmin(isAdm);
+
+            // Privacy-conscious merge: attach this device's anonymous browsing
+            // activity to the account (no personal data, no duplicate rows).
+            claimVisitorActivityOnLogin(u.id);
 
             // Handle redirect if returning from OAuth
             try {

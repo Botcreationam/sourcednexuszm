@@ -426,3 +426,166 @@ export function rankProductsForYou(products = [], options = {}) {
     hasPersonalization: hasSignals,
   };
 }
+
+/* ============================================================================
+ * BROWSING-ACTIVITY RECOMMENDATION HELPERS
+ * Power "Recently Viewed", "Based on Your Activity", "Recommended for You",
+ * "New Arrivals" and dismissible recommendation cards on the shop page.
+ * All data stays on-device (localStorage) unless the customer is signed in —
+ * see claimVisitorActivityOnLogin() below for the anonymous -> account merge.
+ * ========================================================================== */
+
+const DISMISSALS_KEY = "sn_dismissed_suggestions";
+const NEW_ARRIVALS_WINDOW_DAYS = 30;
+
+/**
+ * Record a category browse (category page / product page visit) so
+ * "Based on Your Activity" and "Recommended Watches"-style sections
+ * reflect real browsing rather than hardcoded products.
+ */
+export function recordCategoryView(category) {
+  if (!category || !isPersonalizationEnabled()) return;
+  try {
+    const rawAff = localStorage.getItem(STORAGE_KEYS.CATEGORY_AFFINITY);
+    const aff = rawAff ? JSON.parse(rawAff) : {};
+    aff[category] = (aff[category] || 0) + 1;
+    localStorage.setItem(STORAGE_KEYS.CATEGORY_AFFINITY, JSON.stringify(aff));
+    window.dispatchEvent(new CustomEvent("sn:activity_updated"));
+  } catch {}
+}
+
+/** Categories ordered by browsing affinity, strongest first. */
+export function getTopActivityCategories(limit = 3) {
+  try {
+    const rawAff = localStorage.getItem(STORAGE_KEYS.CATEGORY_AFFINITY);
+    const aff = rawAff ? JSON.parse(rawAff) : {};
+    return Object.entries(aff)
+      .filter(([cat, score]) => cat && score > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([cat]) => cat);
+  } catch {
+    return [];
+  }
+}
+
+/** Reduce affinity for a category (used by "Not interested"). */
+export function reduceCategoryAffinity(category, factor = 3) {
+  try {
+    const rawAff = localStorage.getItem(STORAGE_KEYS.CATEGORY_AFFINITY);
+    const aff = rawAff ? JSON.parse(rawAff) : {};
+    if (aff[category]) {
+      aff[category] = Math.max(0, Math.round(aff[category] / factor));
+      if (aff[category] === 0) delete aff[category];
+      localStorage.setItem(STORAGE_KEYS.CATEGORY_AFFINITY, JSON.stringify(aff));
+      window.dispatchEvent(new CustomEvent("sn:activity_updated"));
+    }
+  } catch {}
+}
+
+/**
+ * Recently viewed products (newest first), mapped onto the live catalog.
+ * @param {Array} products the loaded product catalog
+ * @param {number} limit
+ */
+export function getRecentlyViewedProducts(products = [], limit = 12) {
+  try {
+    const rawViews = localStorage.getItem(STORAGE_KEYS.VIEWS);
+    const views = rawViews ? JSON.parse(rawViews) : [];
+    const byId = new Map(products.map((p) => [p.id, p]));
+    const out = [];
+    for (const v of views) {
+      const product = byId.get(v.id);
+      if (product) out.push(product);
+      if (out.length >= limit) break;
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Products from the customer's strongest browsing categories,
+ * excluding anything already in "Recently Viewed" so the section
+ * surfaces NEW related pieces instead of repeats.
+ */
+export function getActivityBasedProducts(products = [], limit = 12) {
+  const topCategories = getTopActivityCategories();
+  if (topCategories.length === 0) return [];
+  const recentIds = new Set(getRecentlyViewedProducts(products, limit).map((p) => p.id));
+  const seen = new Set();
+  const out = [];
+  // Round-robin across top categories for a balanced mix
+  for (const cat of topCategories) {
+    for (const p of products) {
+      if (p.category === cat && !recentIds.has(p.id) && !seen.has(p.id)) {
+        seen.add(p.id);
+        out.push(p);
+        if (out.length >= limit) return out;
+      }
+    }
+  }
+  return out;
+}
+
+/** New arrivals: flagged or added within the recency window. */
+export function getNewArrivalProducts(products = [], limit = 12) {
+  const cutoff = Date.now() - NEW_ARRIVALS_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  const withTs = products.map((p) => {
+    const ts = p.created_at ? Date.parse(p.created_at) : NaN;
+    return { p, ts: Number.isNaN(ts) ? 0 : ts };
+  });
+  return withTs
+    .filter(({ p, ts }) => p.is_new_arrival || ts >= cutoff)
+    .sort((a, b) => Math.max(b.ts, 0) - Math.max(a.ts, 0))
+    .slice(0, limit)
+    .map(({ p }) => p);
+}
+
+/* --- Dismissible recommendation cards (remembered, never intrusive) --- */
+
+export function isSuggestionDismissed(key) {
+  try {
+    const raw = localStorage.getItem(DISMISSALS_KEY);
+    const dismissed = raw ? JSON.parse(raw) : {};
+    return Boolean(dismissed[key]);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Dismiss a suggestion card permanently (for this browser).
+ * "notInterested" also lowers the category affinity so future
+ * recommendations adapt immediately.
+ */
+export function dismissSuggestion(key, { category = null, notInterested = false } = {}) {
+  try {
+    const raw = localStorage.getItem(DISMISSALS_KEY);
+    const dismissed = raw ? JSON.parse(raw) : {};
+    dismissed[key] = { at: Date.now(), notInterested };
+    localStorage.setItem(DISMISSALS_KEY, JSON.stringify(dismissed));
+    if (notInterested && category) reduceCategoryAffinity(category);
+    window.dispatchEvent(new CustomEvent("sn:suggestion_dismissed", { detail: { key } }));
+  } catch {}
+}
+
+/**
+ * Privacy-conscious merge of anonymous browsing activity into the account:
+ * attaches this device's anonymous product views to the signed-in user via a
+ * security-definer RPC (claim_visitor_activity). Fire-and-forget, never
+ * blocks login, and creates no duplicate rows (only null-user rows are
+ * claimed once).
+ */
+export async function claimVisitorActivityOnLogin(userId = null) {
+  try {
+    if (!supabase || !userId) return;
+    const visitorId = getVisitorId();
+    if (!visitorId) return;
+    await supabase.rpc("claim_visitor_activity", { p_visitor_id: visitorId });
+  } catch (err) {
+    // Non-fatal: local personalization still works without the DB merge.
+    console.warn("Anonymous activity merge skipped:", err?.message);
+  }
+}

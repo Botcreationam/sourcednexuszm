@@ -131,6 +131,11 @@ export default function CartDrawer() {
                               Color: {item.selectedColor}
                             </span>
                           )}
+                          {item.gradeName && (
+                            <span className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 bg-[#C5A059]/15 border border-[#C5A059]/50 text-[#C5A059]">
+                              Grade: {item.gradeName}
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -158,7 +163,17 @@ export default function CartDrawer() {
                           </button>
                         </div>
 
-                        <span className="text-xs font-light text-zinc-300">
+                        <span className="flex items-center gap-1.5 text-xs font-light text-zinc-300">
+                          {item.gradeDiscount ? (
+                            <span className="text-[9px] uppercase font-semibold bg-red-500/15 text-red-400 border border-red-500/40 px-1 py-0.5">
+                              {String(item.gradeDiscount).includes("%") ? item.gradeDiscount : `${item.gradeDiscount}% OFF`}
+                            </span>
+                          ) : null}
+                          {item.gradeOriginalPrice ? (
+                            <span className="line-through decoration-zinc-600 text-zinc-500">
+                              {formatKwachaPrice(item.gradeOriginalPrice)}
+                            </span>
+                          ) : null}
                           {formatKwachaPrice(item.price)}
                         </span>
                       </div>
