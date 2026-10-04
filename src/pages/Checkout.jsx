@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { Navigate, useNavigate, Link } from "react-router-dom";
+import { Navigate, useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import { formatKwachaPrice } from "@/lib/utils";
-import { loadLencoWidget } from "@/lib/lencoWidget";
 import {
   ShoppingBag,
   CreditCard,
@@ -40,10 +39,39 @@ export default function Checkout() {
   const [phone, setPhone] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     if (user?.email && !email) setEmail(user.email);
   }, [user?.email]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Returning from Payza's hosted checkout: ?payza=return|cancelled&ref=...
+  useEffect(() => {
+    const flow = searchParams.get("payza");
+    const ref = searchParams.get("ref");
+    if (!flow || !ref) return;
+    let orderNumber = null;
+    try {
+      const saved = JSON.parse(sessionStorage.getItem("sn_payza_ref") || "null");
+      if (saved?.reference === ref) orderNumber = saved.orderNumber;
+    } catch {
+      /* ignore malformed storage */
+    }
+    // Clean the URL so a refresh does not re-enter the flow
+    setSearchParams({}, { replace: true });
+    if (/^[A-Za-z0-9._-]{6,100}$/.test(ref)) {
+      setOrderInfo((prev) => prev || { orderNumber, reference: ref });
+      if (flow === "cancelled") {
+        // Customer backed out of the hosted checkout: cancel the attempt so a
+        // retry gets a fresh reference. The cart is untouched.
+        postJson("/api/payments/payza/cancel", { reference: ref }).catch(() => {});
+        setUiState(UI_STATE.CLOSED);
+      } else {
+        verifyPayment(ref);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Only items with a numeric price can be paid online; "Price on request"
   // items stay in the inquiry flow.
@@ -73,7 +101,7 @@ export default function Checkout() {
     return { ok: res.ok, status: res.status, payload };
   };
 
-  const handlePayWithLenco = async () => {
+  const handlePayWithPayza = async () => {
     setError(null);
     if (payableItems.length === 0) {
       setError("None of the items in your cart can be paid for online. Please use the inquiry flow for price-on-request items.");
@@ -85,9 +113,10 @@ export default function Checkout() {
     }
     setUiState(UI_STATE.PAYING);
     try {
-      // The server computes the real amount from the products table. The cart
-      // only sends line identity (product, grade, size, color, quantity).
-      const { ok, payload } = await postJson("/api/payments/lenco/create-order", {
+      // The server computes the real amount from the products table and
+      // starts a hosted-checkout payment at Payza. The cart only sends line
+      // identity (product, grade, size, color, quantity) — never a price.
+      const { ok, payload } = await postJson("/api/payments/payza/create-order", {
         items: payableItems.map((item) => ({
           productId: item.id,
           quantity: item.quantity,
@@ -104,34 +133,28 @@ export default function Checkout() {
       }
 
       setOrderInfo({ orderNumber: payload.orderNumber, reference: payload.reference });
+      // Keep the reference for the post-redirect return trip
+      try {
+        sessionStorage.setItem("sn_payza_ref", JSON.stringify({ reference: payload.reference, orderNumber: payload.orderNumber }));
+      } catch {
+        /* storage unavailable; the return URL still carries the reference */
+      }
 
-      const LencoPay = await loadLencoWidget(payload.environment);
-      setUiState(UI_STATE.VERIFYING);
-      LencoPay.getPaid({
-        key: payload.publicKey,
-        reference: payload.reference,
-        email,
-        amount: payload.amount,
-        currency: payload.currency,
-        channels: ["card", "mobile-money"],
-        customer: { firstName: firstName || undefined, lastName: lastName || undefined, phone: phone || undefined },
-        label: `Sourced Nexus Order ${payload.orderNumber}`,
-        onSuccess: () => verifyPayment(payload.reference),
-        onConfirmationPending: () => setUiState(UI_STATE.PENDING),
-        onClose: () => handlePaymentClosed(payload.reference),
-      });
+      // Redirect the customer to Payza's hosted checkout (Airtel Money,
+      // MTN, Zamtel). Payza sends them back to /checkout when done.
+      window.location.assign(payload.paymentUrl);
     } catch (err) {
-      setError(err?.message || "The payment window could not be opened. Please try again.");
+      setError(err?.message || "The payment page could not be opened. Please try again.");
       setUiState(UI_STATE.FORM);
     }
   };
 
-  const verifyPayment = useCallback(
+    const verifyPayment = useCallback(
     async (reference) => {
       setUiState(UI_STATE.VERIFYING);
       setError(null);
       try {
-        const { ok, payload } = await postJson("/api/payments/lenco/verify", { reference });
+        const { ok, payload } = await postJson("/api/payments/payza/verify", { reference });
         if (!ok) {
           setError(payload?.error || "We could not confirm your payment. Please try verifying again.");
           setUiState(UI_STATE.FAILED);
@@ -154,13 +177,6 @@ export default function Checkout() {
     },
     [] // postJson defined in component scope; stable enough for this page
   );
-
-  const handlePaymentClosed = (reference) => {
-    // Customer closed the payment window before paying: cancel the attempt so
-    // a retry gets a fresh reference, and keep the cart untouched.
-    postJson("/api/payments/lenco/cancel", { reference }).catch(() => {});
-    setUiState(UI_STATE.CLOSED);
-  };
 
   // Remove only the successfully purchased lines from the local cart
   useEffect(() => {
@@ -244,7 +260,7 @@ export default function Checkout() {
               ? "Your payment is being confirmed by the provider. You can check its status below at any time."
               : uiState === UI_STATE.FAILED
               ? error || "The payment did not go through. You can safely retry below."
-              : "You closed the payment window before completing the payment. Your cart is untouched."
+              : "You cancelled the payment before completing it. Your cart is untouched."
           }
         >
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -373,14 +389,14 @@ export default function Checkout() {
             )}
 
             <button
-              onClick={handlePayWithLenco}
+              onClick={handlePayWithPayza}
               disabled={payableItems.length === 0}
               className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 text-[12px] tracking-wide-2 uppercase bg-[#C5A059] text-black hover:bg-[#b8914f] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              <CreditCard className="w-4 h-4" /> Pay with Lenco
+              <CreditCard className="w-4 h-4" /> Pay with Payza
             </button>
             <p className="mt-3 flex items-center gap-2 text-[10px] tracking-wide-2 uppercase text-muted-foreground">
-              <Lock className="w-3.5 h-3.5" /> Card & Mobile Money • Secured by Lenco
+              <Lock className="w-3.5 h-3.5" /> Airtel Money, MTN & Zamtel • Secured by Payza
             </p>
           </section>
         </div>

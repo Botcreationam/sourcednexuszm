@@ -4,19 +4,19 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import helmet from 'helmet';
 import {
-  lencoConfig,
+  payzaConfig,
   getAuthUser,
   sanitizeCheckoutItems,
   sanitizeCustomer,
   createPendingOrder,
-  verifyLencoCollection,
+  verifyPayzaPayment,
   applyPaymentResult,
   cancelPaymentAttempt,
-  verifyLencoSignature,
+  verifyPayzaSignature,
   referenceIsValid,
   supabaseServiceConfigured,
   supabaseRest,
-} from './lib/lenco-shared.mjs';
+} from './lib/payza-shared.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -200,7 +200,7 @@ const helmetHandler = helmet({
     useDefaults: false,
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://challenges.cloudflare.com", "https://pay.lenco.co", "https://pay.sandbox.lenco.co"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://challenges.cloudflare.com"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
       imgSrc: [
@@ -222,7 +222,7 @@ const helmetHandler = helmet({
         "https://accounts.google.com",
         "https://challenges.cloudflare.com"
       ],
-      frameSrc: ["'self'", "https://challenges.cloudflare.com", "https://pay.lenco.co", "https://pay.sandbox.lenco.co"],
+      frameSrc: ["'self'", "https://challenges.cloudflare.com"],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'", "https://accounts.google.com", "https://*.supabase.co"],
@@ -559,18 +559,18 @@ const server = http.createServer((req, res) => {
 
 
     if (req.method === 'POST' && (
-      reqUrl === '/api/payments/lenco/create-order' ||
-      reqUrl === '/api/payments/lenco/verify' ||
-      reqUrl === '/api/payments/lenco/cancel' ||
-      reqUrl === '/api/webhooks/lenco'
+      reqUrl === '/api/payments/payza/create-order' ||
+      reqUrl === '/api/payments/payza/verify' ||
+      reqUrl === '/api/payments/payza/cancel' ||
+      reqUrl === '/api/webhooks/payza'
     )) {
       // Fire-and-forget async handler (same pattern as the Turnstile route);
       // the outer callback returns immediately so static serving never runs.
       (async () => {
     // ======================================================================
-    // Lenco payments (BroadPay) — server-side only. The secret key never
-    // leaves this process. All amounts are recomputed from the products
-    // table via the service role; the browser is never trusted.
+    // Payza payments — server-side only. The secret key and webhook signing
+    // secret never leave this process. All amounts are recomputed from the
+    // products table via the service role; the browser is never trusted.
     // ======================================================================
 
     // Read a JSON body with a hard size cap, returning a promise.
@@ -602,12 +602,13 @@ const server = http.createServer((req, res) => {
       res.end(JSON.stringify(obj));
     };
 
-    // POST /api/payments/lenco/create-order
-    // Authenticated. Creates/reuses a pending order with server-side pricing
-    // and returns a fresh payment reference. No prices are accepted from the client.
-    if (req.method === 'POST' && reqUrl === '/api/payments/lenco/create-order') {
+    // POST /api/payments/payza/create-order
+    // Authenticated. Creates/reuses a pending order with server-side pricing,
+    // starts the hosted-checkout payment at Payza and returns the checkout
+    // URL plus a fresh payment reference. No prices are accepted from the client.
+    if (req.method === 'POST' && reqUrl === '/api/payments/payza/create-order') {
       try {
-        const cfg = lencoConfig();
+        const cfg = payzaConfig();
         if (!cfg.configured) {
           json(503, { success: false, error: 'Online payments are not available right now.' });
           return;
@@ -628,13 +629,18 @@ const server = http.createServer((req, res) => {
           json(400, { success: false, error: customerError });
           return;
         }
-        const result = await createPendingOrder({ user: authUser, lines, customer });
+        // Public origin used for Payza's webhook/redirect/cancel URLs.
+        // SITE_BASE_URL wins; otherwise derive from the request's own Host
+        // (the browser's origin is not trusted).
+        const host = req.headers['host'];
+        const baseUrl = (process.env.SITE_BASE_URL || (host ? `https://${host}` : '')).replace(/\/$/, '');
+        const result = await createPendingOrder({ user: authUser, lines, customer, baseUrl });
         if (result.error) {
           json(409, { success: false, error: result.error });
           return;
         }
-        // Public key is safe to expose by design (Lenco widget). The secret
-        // key is never included anywhere in this response.
+        // No Payza keys are exposed to the browser — the customer is simply
+        // redirected to the hosted checkout URL below.
         json(201, {
           success: true,
           reference: result.payment.reference,
@@ -642,22 +648,20 @@ const server = http.createServer((req, res) => {
           currency: 'ZMW',
           orderId: result.order.id,
           orderNumber: result.order.orderNumber,
-          publicKey: cfg.publicKey,
-          environment: cfg.env,
-          widgetUrl: cfg.widgetUrl,
+          paymentUrl: result.payment.paymentUrl,
         });
         return;
       } catch (err) {
-        console.error('[lenco] create-order error:', err.message);
+        console.error('[payza] create-order error:', err.message);
         json(500, { success: false, error: 'Could not start the payment. Please try again.' });
         return;
       }
     }
 
-    // POST /api/payments/lenco/verify
+    // POST /api/payments/payza/verify
     // Authenticated + ownership-checked. The backend performs the trusted
-    // verification with Lenco; the frontend's word is never taken for payment.
-    if (req.method === 'POST' && reqUrl === '/api/payments/lenco/verify') {
+    // verification with Payza; the frontend's word is never taken for payment.
+    if (req.method === 'POST' && reqUrl === '/api/payments/payza/verify') {
       try {
         const authUser = await getAuthUser(req.headers['authorization']);
         if (!authUser) {
@@ -682,12 +686,12 @@ const server = http.createServer((req, res) => {
           json(403, { success: false, error: 'You can only verify your own payments.' });
           return;
         }
-        const lencoResult = await verifyLencoCollection(reference);
-        if (lencoResult.error) {
-          json(502, { success: false, error: lencoResult.error });
+        const payzaResult = await verifyPayzaPayment(reference);
+        if (payzaResult.error) {
+          json(502, { success: false, error: payzaResult.error });
           return;
         }
-        const applied = await applyPaymentResult(reference, lencoResult, { source: 'verify' });
+        const applied = await applyPaymentResult(reference, payzaResult, { source: 'verify' });
         if (applied.error) {
           json(applied.code || 409, { success: false, error: applied.error });
           return;
@@ -704,14 +708,14 @@ const server = http.createServer((req, res) => {
         });
         return;
       } catch (err) {
-        console.error('[lenco] verify error:', err.message);
+        console.error('[payza] verify error:', err.message);
         json(500, { success: false, error: 'Could not verify the payment. Please try again.' });
         return;
       }
     }
 
-    // POST /api/payments/lenco/cancel — customer closed the Lenco window
-    if (req.method === 'POST' && reqUrl === '/api/payments/lenco/cancel') {
+    // POST /api/payments/payza/cancel — customer cancelled the checkout
+    if (req.method === 'POST' && reqUrl === '/api/payments/payza/cancel') {
       try {
         const authUser = await getAuthUser(req.headers['authorization']);
         if (!authUser) {
@@ -739,42 +743,42 @@ const server = http.createServer((req, res) => {
         json(200, { success: true, cancelled: true });
         return;
       } catch (err) {
-        console.error('[lenco] cancel error:', err.message);
+        console.error('[payza] cancel error:', err.message);
         json(500, { success: false, error: 'Could not update the payment attempt.' });
         return;
       }
     }
 
-    // POST /api/webhooks/lenco — Lenco payment events.
+    // POST /api/webhooks/payza — Payza payment events.
     // Unauthenticated by design: authenticity is proven by the
-    // X-Lenco-Signature HMAC (SHA-512 keyed with the sha256 of the secret
-    // key). The raw body is used for signature verification.
-    if (req.method === 'POST' && reqUrl === '/api/webhooks/lenco') {
+    // X-Payza-Signature HMAC (SHA-256 keyed with the account's Webhook
+    // Signing Secret). The raw body is used for signature verification.
+    if (req.method === 'POST' && reqUrl === '/api/webhooks/payza') {
       try {
         const { json: event, raw } = await readJsonBody(64000);
-        const signature = req.headers['x-lenco-signature'];
-        if (!verifyLencoSignature(raw, signature)) {
+        const signature = req.headers['x-payza-signature'];
+        if (!verifyPayzaSignature(raw, signature)) {
           json(401, { success: false, error: 'Invalid signature' });
           return;
         }
         const eventType = typeof event?.event === 'string' ? event.event : '';
-        const data = event?.data || {};
-        const reference = typeof data?.reference === 'string' ? data.reference : '';
-        if (eventType.startsWith('collection.') && referenceIsValid(reference)) {
-          // Re-verify with Lenco before trusting the event body (defense in
-          // depth on top of the signature).
-          const lencoResult = await verifyLencoCollection(reference);
-          if (!lencoResult.error) {
-            await applyPaymentResult(reference, lencoResult, { source: 'webhook' });
+        // Payza's webhook body carries our reference at the top level.
+        const reference = typeof event?.reference === 'string' ? event.reference : '';
+        if (eventType.startsWith('payment.') && referenceIsValid(reference)) {
+          // Re-verify with Payza before trusting the event body (defense in
+          // depth on top of the signature; also enforces amount + currency).
+          const payzaResult = await verifyPayzaPayment(reference);
+          if (!payzaResult.error) {
+            await applyPaymentResult(reference, payzaResult, { source: 'webhook' });
           }
-          // settled/failed events that verify could not confirm are left to
-          // the re-query/verify path; we still acknowledge with 200.
+          // Events that verify could not confirm are left to the re-query /
+          // verify path; we still acknowledge with 200.
         }
-        // Always acknowledge valid events so Lenco stops retrying.
+        // Always acknowledge valid events so Payza stops retrying.
         json(200, { received: true });
         return;
       } catch (err) {
-        console.error('[lenco] webhook error:', err.message);
+        console.error('[payza] webhook error:', err.message);
         json(200, { received: true }); // ack to avoid retry storms on parse issues
         return;
       }

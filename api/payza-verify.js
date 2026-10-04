@@ -1,15 +1,15 @@
 // ============================================================================
-// POST /api/payments/lenco/verify  (Vercel serverless mirror)
+// POST /api/payments/payza/verify  (Vercel serverless mirror)
 // Authenticated + ownership-checked; the backend performs the trusted
-// verification with Lenco before any state change.
+// verification with Payza before any state change.
 // ============================================================================
 import {
   getAuthUser,
-  verifyLencoCollection,
+  verifyPayzaPayment,
   applyPaymentResult,
   referenceIsValid,
   supabaseRest,
-} from '../lib/lenco-shared.mjs';
+} from '../lib/payza-shared.mjs';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -34,11 +34,11 @@ export default async function handler(req, res) {
     if (own.data[0].user_id !== authUser.id) {
       return res.status(403).json({ success: false, error: 'You can only verify your own payments.' });
     }
-    const lencoResult = await verifyLencoCollection(reference);
-    if (lencoResult.error) {
-      return res.status(502).json({ success: false, error: lencoResult.error });
+    const payzaResult = await verifyPayzaPayment(reference);
+    if (payzaResult.error) {
+      return res.status(502).json({ success: false, error: payzaResult.error });
     }
-    const applied = await applyPaymentResult(reference, lencoResult, { source: 'verify' });
+    const applied = await applyPaymentResult(reference, payzaResult, { source: 'verify' });
     if (applied.error) {
       return res.status(applied.code || 409).json({ success: false, error: applied.error });
     }
@@ -53,7 +53,7 @@ export default async function handler(req, res) {
       orderNumber: order ? order.order_number : null,
     });
   } catch (err) {
-    console.error('[lenco] verify error:', err.message);
+    console.error('[payza] verify error:', err.message);
     return res.status(500).json({ success: false, error: 'Could not verify the payment. Please try again.' });
   }
 }

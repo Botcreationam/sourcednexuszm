@@ -1,13 +1,13 @@
 // ============================================================================
-// POST /api/payments/lenco/cancel  (Vercel serverless mirror)
-// Customer closed the Lenco window before paying — cancels the open attempt.
+// POST /api/payments/payza/cancel  (Vercel serverless mirror)
+// Customer cancelled the checkout before paying — cancels the open attempt.
 // ============================================================================
 import {
   getAuthUser,
   cancelPaymentAttempt,
   referenceIsValid,
   supabaseRest,
-} from '../lib/lenco-shared.mjs';
+} from '../lib/payza-shared.mjs';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
     await cancelPaymentAttempt(reference);
     return res.status(200).json({ success: true, cancelled: true });
   } catch (err) {
-    console.error('[lenco] cancel error:', err.message);
+    console.error('[payza] cancel error:', err.message);
     return res.status(500).json({ success: false, error: 'Could not update the payment attempt.' });
   }
 }

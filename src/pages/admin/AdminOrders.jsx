@@ -191,7 +191,6 @@ export default function AdminOrders() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">
                       {pay ? pay.reference : "—"}
-                      {pay?.lenco_reference && <p className="text-[10px]">Lenco: {pay.lenco_reference}</p>}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span

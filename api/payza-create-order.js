@@ -1,21 +1,21 @@
 // ============================================================================
-// POST /api/payments/lenco/create-order  (Vercel serverless mirror)
-// See lib/lenco-shared.mjs and server.js for the full security model.
+// POST /api/payments/payza/create-order  (Vercel serverless mirror)
+// See lib/payza-shared.mjs and server.js for the full security model.
 // ============================================================================
 import {
-  lencoConfig,
+  payzaConfig,
   getAuthUser,
   sanitizeCheckoutItems,
   sanitizeCustomer,
   createPendingOrder,
-} from '../lib/lenco-shared.mjs';
+} from '../lib/payza-shared.mjs';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
   try {
-    const cfg = lencoConfig();
+    const cfg = payzaConfig();
     if (!cfg.configured) {
       return res.status(503).json({ success: false, error: 'Online payments are not available right now.' });
     }
@@ -29,9 +29,15 @@ export default async function handler(req, res) {
     const { customer, error: customerError } = sanitizeCustomer(payload.customer);
     if (customerError) return res.status(400).json({ success: false, error: customerError });
 
-    const result = await createPendingOrder({ user: authUser, lines, customer });
+    // Public origin used for Payza's webhook/redirect/cancel URLs.
+    // SITE_BASE_URL wins; otherwise derive from the request's own host.
+    const host = req.headers['host'];
+    const baseUrl = (process.env.SITE_BASE_URL || (host ? `https://${host}` : '')).replace(/\/$/, '');
+    const result = await createPendingOrder({ user: authUser, lines, customer, baseUrl });
     if (result.error) return res.status(409).json({ success: false, error: result.error });
 
+    // No Payza keys are exposed to the browser; the customer is redirected
+    // to the hosted checkout URL.
     return res.status(201).json({
       success: true,
       reference: result.payment.reference,
@@ -39,12 +45,10 @@ export default async function handler(req, res) {
       currency: 'ZMW',
       orderId: result.order.id,
       orderNumber: result.order.orderNumber,
-      publicKey: cfg.publicKey,
-      environment: cfg.env,
-      widgetUrl: cfg.widgetUrl,
+      paymentUrl: result.payment.paymentUrl,
     });
   } catch (err) {
-    console.error('[lenco] create-order error:', err.message);
+    console.error('[payza] create-order error:', err.message);
     return res.status(500).json({ success: false, error: 'Could not start the payment. Please try again.' });
   }
 }

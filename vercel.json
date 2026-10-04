@@ -2,20 +2,20 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/api/payments/lenco/create-order",
-      "destination": "/api/lenco-create-order"
+      "source": "/api/payments/payza/create-order",
+      "destination": "/api/payza-create-order"
     },
     {
-      "source": "/api/payments/lenco/verify",
-      "destination": "/api/lenco-verify"
+      "source": "/api/payments/payza/verify",
+      "destination": "/api/payza-verify"
     },
     {
-      "source": "/api/payments/lenco/cancel",
-      "destination": "/api/lenco-cancel"
+      "source": "/api/payments/payza/cancel",
+      "destination": "/api/payza-cancel"
     },
     {
-      "source": "/api/webhooks/lenco",
-      "destination": "/api/lenco-webhook"
+      "source": "/api/webhooks/payza",
+      "destination": "/api/payza-webhook"
     },
     {
       "source": "/api/apps/:path*",

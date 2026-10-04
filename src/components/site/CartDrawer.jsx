@@ -220,13 +220,13 @@ export default function CartDrawer() {
                 <ArrowRight className="w-4 h-4" />
               </button>
 
-              {/* Online payment via Lenco — additional option, inquiry flow untouched */}
+              {/* Online payment via Payza — additional option, inquiry flow untouched */}
               <button
                 onClick={handleGoToCheckout}
                 className="w-full border border-[#C5A059]/60 hover:border-[#C5A059] text-foreground py-3.5 px-4 text-xs tracking-wide-2 uppercase font-medium transition-colors flex items-center justify-center gap-2"
               >
                 <CreditCard className="w-4 h-4 text-[#C5A059]" />
-                <span>Pay Online with Lenco</span>
+                <span>Pay Online with Payza</span>
               </button>
 
               <div className="flex items-center justify-center gap-1.5 text-[10px] text-zinc-500">

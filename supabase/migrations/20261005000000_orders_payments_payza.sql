@@ -1,12 +1,13 @@
 -- ============================================================================
--- SOURCED NEXUS — ORDERS, ORDER ITEMS & LENCO PAYMENTS
+-- SOURCED NEXUS — ORDERS, ORDER ITEMS & PAYZA PAYMENTS
 -- ----------------------------------------------------------------------------
 -- Purpose:
---   Minimal, additive schema for online payments via Lenco (BroadPay). Adds
---   three new tables that do not touch any existing table, policy or data:
+--   Minimal, additive schema for online payments via Payza (payzaapi.co.ke).
+--   Adds three new tables that do not touch any existing table, policy or
+--   data:
 --     public.orders       one row per purchase attempt (cart fingerprint)
 --     public.order_items  immutable line-item snapshots (product, grade, price)
---     public.payments     one row per payment attempt (Lenco reference)
+--     public.payments     one row per payment attempt (Payza reference)
 --
 -- Safety:
 --   - Purely additive: create table if not exists only, no drops, no deletes,
@@ -67,16 +68,15 @@ create table if not exists public.order_items (
 );
 
 -- ----------------------------------------------------------------------------
--- 3. PAYMENTS — one row per Lenco payment attempt
+-- 3. PAYMENTS — one row per Payza payment attempt
 -- ----------------------------------------------------------------------------
 create table if not exists public.payments (
     id uuid primary key default gen_random_uuid(),
     order_id uuid not null references public.orders(id) on delete cascade,
     user_id uuid not null references auth.users(id) on delete cascade,
-    provider text not null default 'lenco',
-    -- our unique reference, sent to the Lenco widget, used for verification
+    provider text not null default 'payza',
+    -- our unique reference, sent to Payza, used for verification
     reference text not null unique,
-    lenco_reference text,
     amount numeric(12,2) not null,
     currency text not null default 'ZMW',
     payment_method text,
@@ -132,3 +132,11 @@ create index if not exists idx_payments_user_id on public.payments (user_id);
 create index if not exists idx_orders_user_id on public.orders (user_id);
 create index if not exists idx_orders_status on public.orders (status);
 create index if not exists idx_order_items_order_id on public.order_items (order_id);
+
+-- ----------------------------------------------------------------------------
+-- If the earlier Lenco-flavoured draft of this migration was already run,
+-- these idempotent follow-ups adapt it. Safe to skip otherwise.
+-- ----------------------------------------------------------------------------
+-- alter table public.payments
+--     alter column provider set default 'payza',
+--     drop column if exists lenco_reference;
