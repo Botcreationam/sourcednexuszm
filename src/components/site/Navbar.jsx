@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, LogOut, Sliders, Heart, ShoppingBag, MessageSquare, Home, Bell, Store } from "lucide-react";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Menu, X, LogOut, Sliders, Heart, ShoppingBag, MessageSquare, Home, Bell, Store, Search } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
-import { supabase } from "@/lib/supabase";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { formatKwachaPrice } from "@/lib/utils";
 import PreferencesModal from "./PreferencesModal";
 import OnboardingModal from "./OnboardingModal";
 import SignOutModal from "./SignOutModal";
@@ -64,6 +65,70 @@ function NavTab({ icon: Icon, label, active = false, onClick, badge = 0, badgeCl
   );
 }
 
+/**
+ * Inline header search form (pill input + suggestion dropdown).
+ * Renders on the same row as the logo on every screen size.
+ */
+function HeaderSearchForm({
+  value,
+  onChange,
+  onSubmit,
+  suggestions,
+  showSuggestions,
+  onFocus,
+  onBlur,
+  onPick,
+  inputRef,
+  placeholder = "Search products...",
+  className = "",
+}) {
+  return (
+    <form onSubmit={onSubmit} className={`flex-1 min-w-0 ${className}`}>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+        <input
+          ref={inputRef}
+          value={value}
+          onChange={onChange}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          placeholder={placeholder}
+          aria-label="Search products"
+          className="w-full pl-9 pr-3 py-1.5 text-xs sm:text-sm bg-transparent border border-border rounded-full focus:border-foreground outline-none"
+        />
+        {/* Search suggestions dropdown */}
+        {showSuggestions && suggestions.length > 0 && (
+          <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-background border border-border shadow-lg max-h-80 overflow-y-auto">
+            {suggestions.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onPick(p);
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/60 transition-colors border-b border-border/40 last:border-b-0"
+              >
+                {p.images?.[0] ? (
+                  <img src={p.images[0]} alt="" className="w-10 h-12 object-cover flex-shrink-0" loading="lazy" />
+                ) : (
+                  <div className="w-10 h-12 bg-muted flex-shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <p className="text-sm font-medium line-clamp-1">{p.name}</p>
+                  <p className="text-[10px] tracking-wide-2 uppercase text-muted-foreground">
+                    {p.category} • {formatKwachaPrice(p.price)}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </form>
+  );
+}
+
 export default function Navbar() {
   const { user, isAuthenticated } = useAuth();
   const { cartCount, wishlistCount, isCartOpen, isWishlistOpen, openCart, openWishlist } = useCart();
@@ -74,9 +139,72 @@ export default function Navbar() {
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [navSearch, setNavSearch] = useState("");
+  const [navSuggestions, setNavSuggestions] = useState([]);
+  const [showNavSuggestions, setShowNavSuggestions] = useState(false);
+  const [desktopSearchOpen, setDesktopSearchOpen] = useState(false);
   const location = useLocation();
+  const [params, setParams] = useSearchParams();
 
   const navigate = useNavigate();
+
+  // Debounced product suggestions for the header search bar
+  useEffect(() => {
+    const q = navSearch.trim();
+    if (!isSupabaseConfigured || q.length < 2) {
+      setNavSuggestions([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const { data } = await supabase
+          .from("products")
+          .select("id,name,category,price,images")
+          .neq("status", "hidden")
+          .ilike("name", `%${q}%`)
+          .order("created_at", { ascending: false })
+          .limit(5);
+        setNavSuggestions(data || []);
+      } catch {
+        setNavSuggestions([]);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [navSearch]);
+
+  const handleNavSearchChange = (e) => {
+    const q = e.target.value;
+    setNavSearch(q);
+    setShowNavSuggestions(true);
+    // Live filtering while already on the catalog page
+    if (location.pathname === "/catalog") {
+      const next = new URLSearchParams(params);
+      if (q.trim()) next.set("search", q);
+      else next.delete("search");
+      setParams(next, { replace: true });
+    }
+  };
+
+  const handleNavSearchSubmit = (e) => {
+    e.preventDefault();
+    const q = navSearch.trim();
+    setShowNavSuggestions(false);
+    if (!q) return;
+    const next = new URLSearchParams();
+    next.set("search", q);
+    navigate(`/catalog?${next.toString()}`);
+  };
+
+  const handleNavSuggestionPick = (p) => {
+    setShowNavSuggestions(false);
+    setDesktopSearchOpen(false);
+    navigate(`/product/${p.id}`);
+  };
+
+  const closeDesktopSearch = () => {
+    setDesktopSearchOpen(false);
+    setShowNavSuggestions(false);
+  };
 
   // Check if email account is awaiting verification (Google users are automatically verified)
   const isEmailUnverified =
@@ -149,7 +277,31 @@ export default function Navbar() {
               </span>
             </Link>
 
-            <div className="hidden lg:flex items-center gap-8">
+            <div className="hidden lg:flex items-center gap-7">
+              {desktopSearchOpen ? (
+                <>
+                  <HeaderSearchForm
+                    value={navSearch}
+                    onChange={handleNavSearchChange}
+                    onSubmit={handleNavSearchSubmit}
+                    suggestions={navSuggestions}
+                    showSuggestions={showNavSuggestions}
+                    onFocus={() => setShowNavSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowNavSuggestions(false), 150)}
+                    onPick={handleNavSuggestionPick}
+                    className="mr-2"
+                  />
+                  <button
+                    type="button"
+                    onClick={closeDesktopSearch}
+                    aria-label="Close search"
+                    className="text-muted-foreground hover:text-foreground transition-colors p-1.5 flex-shrink-0"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </>
+              ) : (
+              <>
               {LINKS.map((l) => (
                 <button
                   key={l.label}
@@ -159,6 +311,17 @@ export default function Navbar() {
                   {l.label}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => setDesktopSearchOpen(true)}
+                aria-label="Search"
+                title="Search"
+                className="text-foreground/80 hover:text-foreground transition-colors p-1 flex-shrink-0"
+              >
+                <Search className="w-4 h-4" />
+              </button>
+              </>
+              )}
 
               {isAuthenticated ? (
                 <div className="flex items-center gap-3">
@@ -249,6 +412,19 @@ export default function Navbar() {
                 </button>
               </div>
             </div>
+
+            {/* Header search bar — same line as the logo on mobile & tablet */}
+            <HeaderSearchForm
+              value={navSearch}
+              onChange={handleNavSearchChange}
+              onSubmit={handleNavSearchSubmit}
+              suggestions={navSuggestions}
+              showSuggestions={showNavSuggestions}
+              onFocus={() => setShowNavSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowNavSuggestions(false), 150)}
+              onPick={handleNavSuggestionPick}
+              className="mx-3 lg:hidden"
+            />
 
             {/* Mobile Header Controls: theme, notifications and secondary menu only.
                 Primary navigation (Home, Shop, Saved, Inbox, Cart) lives in the

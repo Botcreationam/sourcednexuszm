@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Search, SlidersHorizontal, X, SlidersHorizontal as TuneIcon, Percent, ChevronRight } from "lucide-react";
+import { SlidersHorizontal, X, SlidersHorizontal as TuneIcon, Percent, ChevronRight } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { isSupabaseConfigured, getSupabaseProducts, supabase } from "@/lib/supabase";
 import {
@@ -78,8 +78,9 @@ export default function Catalog() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [params, setParams] = useSearchParams();
-  const [search, setSearch] = useState("");
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  // Search query lives in the URL so the navbar search bar and the catalog
+  // page share one source of truth.
+  const search = params.get("search") || "";
   const [interestsModalOpen, setInterestsModalOpen] = useState(false);
   const [preferencesModalOpen, setPreferencesModalOpen] = useState(false);
   const [recRefreshKey, setRecRefreshKey] = useState(0);
@@ -343,101 +344,6 @@ export default function Catalog() {
           controlsHidden ? "-translate-y-full" : "translate-y-0"
         }`}
       >
-        {/* Search row — sits in the header area, directly below the fixed navbar */}
-        <div className="border-b border-border">
-          <div className="mx-auto max-w-7xl px-5 md:px-8 py-3">
-            <div className="flex gap-3 items-center">
-              <div className="relative flex-1 md:flex-none md:w-80">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setShowSuggestions(true);
-                  }}
-                  onFocus={() => setShowSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                  placeholder="Search products, e.g. station suits"
-                  className="w-full pl-10 pr-8 py-2.5 text-sm bg-transparent border border-border rounded-full focus:border-foreground outline-none"
-                />
-                {search && (
-                  <button
-                    onClick={() => setSearch("")}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    aria-label="Clear search"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-
-                {/* Search suggestions dropdown */}
-                {showSuggestions && searchSuggestions.length > 0 && (
-                  <div className="absolute left-0 right-0 top-full mt-1 z-40 bg-background border border-border shadow-lg max-h-80 overflow-y-auto">
-                    {searchSuggestions.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          setShowSuggestions(false);
-                          navigate(`/product/${p.id}`);
-                        }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/60 transition-colors border-b border-border/40 last:border-b-0"
-                      >
-                        {p.images?.[0] ? (
-                          <img src={p.images[0]} alt="" className="w-10 h-12 object-cover flex-shrink-0" loading="lazy" />
-                        ) : (
-                          <div className="w-10 h-12 bg-muted flex-shrink-0" />
-                        )}
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium line-clamp-1">{p.name}</p>
-                          <p className="text-[10px] tracking-wide-2 uppercase text-muted-foreground">
-                            {p.category} • {formatKwachaPrice(p.price)}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Sort: circular icon trigger on mobile (desktop sort lives with the category row) */}
-              <div className="relative md:hidden flex-shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setSortMenuOpen((o) => !o)}
-                  aria-label="Sort products"
-                  className="w-11 h-11 rounded-full border border-border flex items-center justify-center text-foreground/80 hover:border-foreground transition-colors"
-                >
-                  <SlidersHorizontal className="w-4 h-4" />
-                </button>
-                {sortMenuOpen && (
-                  <>
-                    <div className="fixed inset-0 z-30" onClick={() => setSortMenuOpen(false)} />
-                    <div className="absolute right-0 top-full mt-2 z-40 bg-background border border-border shadow-lg min-w-[190px] py-1 rounded-xl overflow-hidden">
-                      {SORTS.map((s) => (
-                        <button
-                          key={s.value}
-                          type="button"
-                          onClick={() => {
-                            setSort(s.value);
-                            setSortMenuOpen(false);
-                          }}
-                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                            sort === s.value ? "bg-muted text-foreground font-medium" : "text-foreground/80 hover:bg-muted/60"
-                          }`}
-                        >
-                          {s.label}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Category navigation — separate section below the search bar */}
         <div className="mx-auto max-w-7xl px-5 md:px-8 py-4">
           <div className="hidden md:flex items-center justify-between gap-4">
@@ -469,8 +375,10 @@ export default function Catalog() {
             </div>
           </div>
 
-          {/* Category selector (mobile): circular icon + label, matches the app's visual language */}
-          <div className="flex md:hidden gap-5 overflow-x-auto no-scrollbar -mx-1 px-1 pb-0.5">
+          {/* Category selector (mobile): circular icon + label, with the sort
+              trigger alongside; the search bar lives in the site header now */}
+          <div className="flex md:hidden items-center gap-2">
+          <div className="flex flex-1 min-w-0 gap-5 overflow-x-auto no-scrollbar -mx-1 px-1 pb-0.5">
             {categories.map((c) => {
               const Icon = getCategoryIcon(c);
               const active = category === c;
@@ -493,6 +401,41 @@ export default function Catalog() {
                 </button>
               );
             })}
+          </div>
+
+              {/* Sort: circular icon trigger on mobile */}
+              <div className="relative flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setSortMenuOpen((o) => !o)}
+                  aria-label="Sort products"
+                  className="w-11 h-11 rounded-full border border-border flex items-center justify-center text-foreground/80 hover:border-foreground transition-colors"
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                </button>
+                {sortMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setSortMenuOpen(false)} />
+                    <div className="absolute right-0 top-full mt-2 z-40 bg-background border border-border shadow-lg min-w-[190px] py-1 rounded-xl overflow-hidden">
+                      {SORTS.map((s) => (
+                        <button
+                          key={s.value}
+                          type="button"
+                          onClick={() => {
+                            setSort(s.value);
+                            setSortMenuOpen(false);
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                            sort === s.value ? "bg-muted text-foreground font-medium" : "text-foreground/80 hover:bg-muted/60"
+                          }`}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
           </div>
         </div>
       </div>
