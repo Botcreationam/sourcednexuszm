@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Heart, ShoppingBag, Check } from "lucide-react";
+import { Heart, Plus, Check } from "lucide-react";
 import { buildWhatsAppUrl, productInquiryMessage } from "@/lib/whatsapp";
 import { formatKwachaPrice } from "@/lib/utils";
 import { recordProductView } from "@/lib/recommendations";
@@ -127,43 +127,31 @@ export default function ProductCard({ product }) {
               {product.name}
             </h3>
           </Link>
-          <p className="text-sm font-light text-foreground">
+        </div>
+      </div>
+
+      {/* Price + quick add */}
+      <div className="flex items-center justify-between gap-3 pt-3 mt-auto">
+        <Link to={`/product/${product.id}`} onClick={handleCardClick} className="min-w-0">
+          <p className="text-sm font-medium text-foreground truncate">
             {product.grades?.length
               ? <>From {formatKwachaPrice(lowestGradePrice)}</>
               : formatKwachaPrice(product.price)}
           </p>
-        </div>
-      </div>
-
-      {/* Action buttons */}
-      <div className="flex gap-2 pt-3 mt-auto">
+        </Link>
         <button
           type="button"
           onClick={handleCartToggle}
-          className={`flex-1 text-center text-[10px] tracking-wide-2 uppercase py-2.5 transition-all flex items-center justify-center gap-1.5 ${
+          title={inCart ? "Remove from Cart" : "Add to Cart"}
+          aria-label={inCart ? "Remove from Cart" : "Add to Cart"}
+          className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
             inCart
-              ? "bg-[#C5A059] text-black font-semibold hover:bg-[#b08e4d]"
-              : "border border-foreground/30 hover:bg-foreground hover:text-background text-foreground"
+              ? "bg-[#C5A059] text-black hover:bg-[#b08e4d]"
+              : "bg-foreground text-background hover:opacity-85"
           }`}
         >
-          {inCart ? (
-            <>
-              <Check className="w-3.5 h-3.5 stroke-[2.5]" /> In Cart
-            </>
-          ) : (
-            <>
-              <ShoppingBag className="w-3 h-3" /> Add to Cart
-            </>
-          )}
+          {inCart ? <Check className="w-4 h-4 stroke-[2.5]" /> : <Plus className="w-4 h-4" />}
         </button>
-
-        <Link
-          to={`/product/${product.id}`}
-          onClick={handleCardClick}
-          className="flex-1 text-center text-[10px] tracking-wide-2 uppercase border border-border/80 text-foreground/80 py-2.5 hover:bg-muted transition-colors flex items-center justify-center"
-        >
-          Details
-        </Link>
       </div>
     </div>
   );

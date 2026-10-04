@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Search, SlidersHorizontal, X, SlidersHorizontal as TuneIcon } from "lucide-react";
+import { Search, SlidersHorizontal, X, SlidersHorizontal as TuneIcon, Percent, ChevronRight } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { isSupabaseConfigured, getSupabaseProducts, supabase } from "@/lib/supabase";
 import {
@@ -16,6 +16,7 @@ import {
   dismissSuggestion,
 } from "@/lib/recommendations";
 import ProductCard from "@/components/site/ProductCard";
+import { getCategoryIcon } from "@/lib/categoryIcons";
 import ScrollReveal from "@/components/site/ScrollReveal";
 import HorizontalProductSection from "@/components/site/HorizontalProductSection";
 import BrandedLoader from "@/components/BrandedLoader";
@@ -82,6 +83,7 @@ export default function Catalog() {
   const [interestsModalOpen, setInterestsModalOpen] = useState(false);
   const [preferencesModalOpen, setPreferencesModalOpen] = useState(false);
   const [recRefreshKey, setRecRefreshKey] = useState(0);
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
 
   const category = params.get("category") || "All";
   const sort = params.get("sort") || "newest";
@@ -310,84 +312,148 @@ export default function Catalog() {
 
       {/* Controls */}
       <div className="sticky top-16 md:top-20 z-30 bg-background/90 backdrop-blur-md border-b border-border">
-        <div className="mx-auto max-w-7xl px-5 md:px-8 py-4 flex flex-col md:flex-row gap-4 md:items-center justify-between">
-          <div className="flex gap-2 overflow-x-auto no-scrollbar">
-            {categories.map((c) => (
-              <button
-                key={c}
-                onClick={() => setCategory(c)}
-                className={`text-[11px] tracking-wide-2 uppercase px-4 py-2 whitespace-nowrap transition-colors ${
-                  category === c ? "bg-foreground text-background" : "border border-border hover:border-foreground"
-                }`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-3 items-center">
-            <div className="relative flex-1 md:flex-none md:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setShowSuggestions(true);
-                }}
-                onFocus={() => setShowSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                placeholder="Search products, e.g. station suits"
-                className="w-full md:w-64 pl-9 pr-8 py-2 text-sm bg-transparent border border-border focus:border-foreground outline-none"
-              />
-              {search && (
+        <div className="mx-auto max-w-7xl px-5 md:px-8 py-4">
+          <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between">
+            {/* Category pills (desktop & tablet) */}
+            <div className="hidden md:flex gap-2 overflow-x-auto no-scrollbar">
+              {categories.map((c) => (
                 <button
-                  onClick={() => setSearch("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  aria-label="Clear search"
+                  key={c}
+                  onClick={() => setCategory(c)}
+                  className={`text-[11px] tracking-wide-2 uppercase px-4 py-2 whitespace-nowrap transition-colors ${
+                    category === c ? "bg-foreground text-background" : "border border-border hover:border-foreground"
+                  }`}
                 >
-                  <X className="w-3.5 h-3.5" />
+                  {c}
                 </button>
-              )}
+              ))}
+            </div>
 
-              {/* Search suggestions dropdown */}
-              {showSuggestions && searchSuggestions.length > 0 && (
-                <div className="absolute left-0 right-0 top-full mt-1 z-40 bg-background border border-border shadow-lg max-h-80 overflow-y-auto">
-                  {searchSuggestions.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        setShowSuggestions(false);
-                        navigate(`/product/${p.id}`);
-                      }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/60 transition-colors border-b border-border/40 last:border-b-0"
-                    >
-                      {p.images?.[0] ? (
-                        <img src={p.images[0]} alt="" className="w-10 h-12 object-cover flex-shrink-0" loading="lazy" />
-                      ) : (
-                        <div className="w-10 h-12 bg-muted flex-shrink-0" />
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium line-clamp-1">{p.name}</p>
-                        <p className="text-[10px] tracking-wide-2 uppercase text-muted-foreground">
-                          {p.category} • {formatKwachaPrice(p.price)}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
+            <div className="flex gap-3 items-center">
+              <div className="relative flex-1 md:flex-none md:w-64">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                  placeholder="Search products, e.g. station suits"
+                  className="w-full md:w-64 pl-10 pr-8 py-2.5 text-sm bg-transparent border border-border rounded-full focus:border-foreground outline-none"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+
+                {/* Search suggestions dropdown */}
+                {showSuggestions && searchSuggestions.length > 0 && (
+                  <div className="absolute left-0 right-0 top-full mt-1 z-40 bg-background border border-border shadow-lg max-h-80 overflow-y-auto">
+                    {searchSuggestions.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setShowSuggestions(false);
+                          navigate(`/product/${p.id}`);
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/60 transition-colors border-b border-border/40 last:border-b-0"
+                      >
+                        {p.images?.[0] ? (
+                          <img src={p.images[0]} alt="" className="w-10 h-12 object-cover flex-shrink-0" loading="lazy" />
+                        ) : (
+                          <div className="w-10 h-12 bg-muted flex-shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium line-clamp-1">{p.name}</p>
+                          <p className="text-[10px] tracking-wide-2 uppercase text-muted-foreground">
+                            {p.category} • {formatKwachaPrice(p.price)}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Sort: circular icon trigger on mobile, labeled dropdown on desktop */}
+              <div className="relative md:hidden flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setSortMenuOpen((o) => !o)}
+                  aria-label="Sort products"
+                  className="w-11 h-11 rounded-full border border-border flex items-center justify-center text-foreground/80 hover:border-foreground transition-colors"
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                </button>
+                {sortMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setSortMenuOpen(false)} />
+                    <div className="absolute right-0 top-full mt-2 z-40 bg-background border border-border shadow-lg min-w-[190px] py-1 rounded-xl overflow-hidden">
+                      {SORTS.map((s) => (
+                        <button
+                          key={s.value}
+                          type="button"
+                          onClick={() => {
+                            setSort(s.value);
+                            setSortMenuOpen(false);
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                            sort === s.value ? "bg-muted text-foreground font-medium" : "text-foreground/80 hover:bg-muted/60"
+                          }`}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="relative hidden md:block">
+                <SlidersHorizontal className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                <select
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value)}
+                  className="appearance-none pl-9 pr-8 py-2 text-sm bg-transparent border border-border focus:border-foreground outline-none cursor-pointer"
+                >
+                  {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+              </div>
             </div>
-            <div className="relative">
-              <SlidersHorizontal className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-              <select
-                value={sort}
-                onChange={(e) => setSort(e.target.value)}
-                className="appearance-none pl-9 pr-8 py-2 text-sm bg-transparent border border-border focus:border-foreground outline-none cursor-pointer"
-              >
-                {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
-            </div>
+          </div>
+
+          {/* Category selector (mobile): circular icon + label, matches the app's visual language */}
+          <div className="flex md:hidden gap-5 overflow-x-auto no-scrollbar mt-4 -mx-1 px-1 pb-0.5">
+            {categories.map((c) => {
+              const Icon = getCategoryIcon(c);
+              const active = category === c;
+              return (
+                <button
+                  key={c}
+                  onClick={() => setCategory(c)}
+                  className="flex flex-col items-center gap-1.5 flex-shrink-0 w-14"
+                >
+                  <span
+                    className={`flex items-center justify-center w-12 h-12 rounded-full border transition-colors ${
+                      active ? "bg-foreground text-background border-foreground" : "border-border text-foreground/70 hover:border-foreground"
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" strokeWidth={1.75} />
+                  </span>
+                  <span className={`text-[10px] tracking-wide uppercase text-center leading-tight ${active ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                    {c}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -399,11 +465,19 @@ export default function Catalog() {
             <BrandedLoader fullScreen={false} text="Loading Catalog..." />
           ) : (
             <>
-              <p className="text-[11px] tracking-wide-2 uppercase text-muted-foreground mb-8">
-                {isSearching
-                  ? `${filtered.length} result${filtered.length === 1 ? "" : "s"} for “${search.trim()}”`
-                  : `${filtered.length} ${filtered.length === 1 ? "piece" : "pieces"}`}
-              </p>
+              <div className="flex items-baseline justify-between mb-6 md:mb-8 gap-3">
+                <h2 className="font-display text-2xl md:text-3xl">
+                  {isSearching ? "Search Results" : category !== "All" ? category : "New Items"}
+                </h2>
+                <p className="text-[11px] tracking-wide-2 uppercase text-muted-foreground whitespace-nowrap">
+                  {isSearching
+                    ? `${filtered.length} result${filtered.length === 1 ? "" : "s"}`
+                    : `${filtered.length} ${filtered.length === 1 ? "piece" : "pieces"}`}
+                </p>
+              </div>
+              {isSearching && (
+                <p className="text-xs text-muted-foreground mb-6 -mt-4">for “{search.trim()}”</p>
+              )}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 md:gap-6">
                 {filtered.map((p) => (
                   <ProductCard key={p.id} product={p} />
@@ -426,46 +500,59 @@ export default function Catalog() {
           {/* Quiet, dismissible New Arrivals card */}
           {newArrivalBanner && (
             <div className="mx-auto max-w-7xl px-5 md:px-8">
-              <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-4 border border-border bg-muted/20 p-4">
-                {newArrivalBanner.images?.[0] && (
+              <button
+                type="button"
+                onClick={() => navigate(`/product/${newArrivalBanner.id}`)}
+                className="group relative w-full flex items-center gap-4 rounded-2xl border border-border bg-card hover:bg-muted/40 p-4 text-left transition-colors"
+              >
+                {newArrivalBanner.images?.[0] ? (
                   <img
                     src={newArrivalBanner.images[0]}
                     alt={newArrivalBanner.name}
-                    className="w-20 h-20 object-cover flex-shrink-0"
+                    className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
                     loading="lazy"
                   />
+                ) : (
+                  <span className="flex items-center justify-center w-14 h-14 rounded-xl bg-foreground text-background flex-shrink-0">
+                    <Percent className="w-5 h-5" />
+                  </span>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] tracking-wide-2 uppercase text-muted-foreground">New Arrival</p>
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/product/${newArrivalBanner.id}`)}
-                    className="font-display text-lg hover:opacity-70 transition-opacity line-clamp-1 text-left"
-                  >
+                  <p className="text-sm font-medium line-clamp-1">
+                    <span className="text-[10px] tracking-wide-2 uppercase text-muted-foreground block mb-0.5">New Arrival</span>
                     {newArrivalBanner.name}
-                  </button>
-                  <p className="text-xs text-muted-foreground">
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     Just added in {newArrivalBanner.category} at {formatKwachaPrice(newArrivalBanner.price)}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 self-start sm:self-center">
-                  <button
-                    type="button"
-                    onClick={() => dismissBanner(true)}
-                    className="text-[10px] tracking-wide-2 uppercase text-muted-foreground hover:text-foreground border border-border px-3 py-1.5 transition-colors"
-                  >
-                    Not interested
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => dismissBanner(false)}
-                    className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label="Dismiss new arrival card"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    dismissBanner(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.stopPropagation();
+                      dismissBanner(false);
+                    }
+                  }}
+                  aria-label="Dismiss new arrival card"
+                  className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-background border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => dismissBanner(true)}
+                className="mt-1.5 text-[10px] tracking-wide-2 uppercase text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Not interested in this
+              </button>
             </div>
           )}
 
