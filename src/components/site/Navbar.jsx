@@ -277,7 +277,7 @@ export default function Navbar() {
               </span>
             </Link>
 
-            <div className="hidden lg:flex items-center gap-7">
+            <div className="hidden xl:flex items-center gap-7">
               {desktopSearchOpen ? (
                 <>
                   <HeaderSearchForm
@@ -306,7 +306,7 @@ export default function Navbar() {
                 <button
                   key={l.label}
                   onClick={() => handleNav(l.to)}
-                  className="text-[11px] tracking-wide-2 uppercase text-foreground/80 hover:text-foreground transition-colors relative after:absolute after:-bottom-1 after:left-0 after:h-px after:w-0 after:bg-foreground after:transition-all hover:after:w-full"
+                  className="whitespace-nowrap text-[11px] tracking-wide-2 uppercase text-foreground/80 hover:text-foreground transition-colors relative after:absolute after:-bottom-1 after:left-0 after:h-px after:w-0 after:bg-foreground after:transition-all hover:after:w-full"
                 >
                   {l.label}
                 </button>
@@ -423,13 +423,13 @@ export default function Navbar() {
               onFocus={() => setShowNavSuggestions(true)}
               onBlur={() => setTimeout(() => setShowNavSuggestions(false), 150)}
               onPick={handleNavSuggestionPick}
-              className="mx-3 lg:hidden"
+              className="mx-3 xl:hidden"
             />
 
             {/* Mobile Header Controls: theme, notifications and secondary menu only.
                 Primary navigation (Home, Shop, Saved, Inbox, Cart) lives in the
                 fixed bottom bar so it never duplicates at the top of the screen. */}
-            <div className="flex items-center gap-1 lg:hidden">
+            <div className="flex items-center gap-1 xl:hidden">
               <ModeToggle />
               {isAuthenticated && (
                 <button
@@ -460,7 +460,7 @@ export default function Navbar() {
 
         {/* Mobile menu */}
         <div
-          className={`lg:hidden overflow-hidden border-t border-border bg-background transition-[max-height] duration-500 ${
+          className={`xl:hidden overflow-hidden border-t border-border bg-background transition-[max-height] duration-500 ${
             open ? "max-h-[80vh]" : "max-h-0"
           }`}
         >
@@ -530,7 +530,7 @@ export default function Navbar() {
           the shopping experience, so it must not show shopping navigation. */}
       {location.pathname !== "/" && (
       <nav
-        className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-background/95 backdrop-blur-md border-t border-border pb-safe"
+        className="xl:hidden fixed bottom-0 inset-x-0 z-50 bg-background/95 backdrop-blur-md border-t border-border pb-safe"
         aria-label="Primary"
       >
         <div className="grid grid-cols-5 h-[60px] items-center">

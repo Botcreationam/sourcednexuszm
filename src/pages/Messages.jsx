@@ -116,7 +116,7 @@ export default function Messages() {
   }
 
   return (
-    <div className="pt-24 md:pt-32 pb-bottomnav lg:pb-8 px-4 md:px-8 max-w-7xl mx-auto min-h-[calc(100vh-100px)]">
+    <div className="pt-24 md:pt-32 pb-bottomnav xl:pb-8 px-4 md:px-8 max-w-7xl mx-auto min-h-[calc(100vh-100px)]">
       <h1 className="font-display text-4xl mb-6">Messages</h1>
       
       <div className="flex h-[600px] border border-border">
