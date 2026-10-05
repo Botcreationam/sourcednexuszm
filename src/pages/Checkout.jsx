@@ -84,18 +84,31 @@ export default function Checkout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Only items with a numeric price can be paid online; "Price on request"
-  // items stay in the inquiry flow.
-  const payableItems = cart.filter(
-    (item) => typeof item.price === "number" || /^\s*[Kk]?\s*[\d,]+(\.\d{1,2})?\s*$/.test(String(item.price || ""))
-  );
-  const inquiryOnlyItems = cart.filter((item) => !payableItems.includes(item));
+  // Only items with a single confirmed numeric price can be paid online.
+  // A price RANGE (e.g. "K5,500 - K6,700") or genuine "Price on Request" is
+  // never collapsed into a guessed number — both stay in the inquiry flow,
+  // but we track them separately so the notice banner is accurate about
+  // which kind of item is holding back the total.
+  const isConfirmedNumeric = (price) =>
+    typeof price === "number" ||
+    /^\s*[Kk]?\s*[\d,]+(\.\d{1,2})?\s*$/.test(String(price || ""));
 
-  const displayTotal = payableItems.reduce((sum, item) => {
+  const payableItems = cart.filter((item) => isConfirmedNumeric(item.price));
+  const inquiryOnlyItems = cart.filter((item) => !isConfirmedNumeric(item.price));
+  const rangeItems = inquiryOnlyItems.filter((item) => /\d\s*[-–]\s*[Kk]?\s*\d/.test(String(item.price || "")));
+  const requestOnlyItems = inquiryOnlyItems.filter((item) => !rangeItems.includes(item));
+
+  // Each line's own subtotal (price × quantity), only meaningful for
+  // confirmed numeric items. A missing/invalid quantity on a legacy cart
+  // record defaults to 1 instead of poisoning the whole sum with NaN.
+  const getItemSubtotal = (item) => {
     const clean = String(item.price).replace(/[Kk,\s]/g, "");
     const n = Number(clean);
-    return sum + (Number.isFinite(n) ? n * item.quantity : 0);
-  }, 0);
+    const qty = Number.isFinite(Number(item.quantity)) && Number(item.quantity) > 0 ? Number(item.quantity) : 1;
+    return Number.isFinite(n) ? n * qty : 0;
+  };
+
+  const displayTotal = payableItems.reduce((sum, item) => sum + getItemSubtotal(item), 0);
 
   const postJson = async (path, body) => {
     const { data } = await (await import("@/lib/supabase")).supabase.auth.getSession();
@@ -322,6 +335,9 @@ export default function Checkout() {
                     </p>
                     <p className="text-sm mt-1">
                       {formatKwachaPrice(item.price)} × {item.quantity}
+                      {isConfirmedNumeric(item.price) && (
+                        <span className="text-muted-foreground"> = {formatKwachaPrice(getItemSubtotal(item))}</span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -331,8 +347,19 @@ export default function Checkout() {
               <div className="mt-4 border border-border bg-muted/30 p-3 flex gap-3 items-start">
                 <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-muted-foreground">
-                  {inquiryOnlyItems.length} item{inquiryOnlyItems.length > 1 ? "s" : ""} priced on request will stay in
-                  your cart for the inquiry flow.
+                  {rangeItems.length > 0 && (
+                    <>
+                      {rangeItems.length} item{rangeItems.length > 1 ? "s" : ""} with a price range
+                      {requestOnlyItems.length > 0 ? " and " : " "}
+                    </>
+                  )}
+                  {requestOnlyItems.length > 0 && (
+                    <>
+                      {requestOnlyItems.length} item{requestOnlyItems.length > 1 ? "s" : ""} priced on request
+                    </>
+                  )}
+                  {" "}will stay in your cart for the inquiry flow and {inquiryOnlyItems.length > 1 ? "are" : "is"} not
+                  included in the order total below.
                 </p>
               </div>
             )}
@@ -340,9 +367,11 @@ export default function Checkout() {
               <span className="text-[11px] tracking-wide-2 uppercase text-muted-foreground">Order Total</span>
               <span className="font-display text-2xl">{formatKwachaPrice(displayTotal)}</span>
             </div>
-            <p className="mt-2 text-[10px] tracking-wide-2 uppercase text-muted-foreground">
-              Final amount is confirmed at payment time
-            </p>
+            {inquiryOnlyItems.length > 0 && (
+              <p className="mt-2 text-[10px] tracking-wide-2 uppercase text-muted-foreground">
+                Final amount is confirmed once the price-on-request items above are settled
+              </p>
+            )}
           </section>
 
           {/* Customer + payment */}

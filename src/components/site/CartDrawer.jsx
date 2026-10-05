@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, ShieldCheck, CreditCard } from "lucide-react";
+import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, ShieldCheck, CreditCard, Loader2 } from "lucide-react";
 import { useCart } from "@/lib/CartContext";
 import { formatKwachaPrice } from "@/lib/utils";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function CartDrawer() {
   const {
@@ -16,6 +18,29 @@ export default function CartDrawer() {
   } = useCart();
 
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [isClearing, setIsClearing] = useState(false);
+
+  // Only report success once the underlying persistent clear is confirmed —
+  // never show "Cart cleared" for an operation that silently failed.
+  const handleClearCart = async () => {
+    if (isClearing) return;
+    setIsClearing(true);
+    try {
+      const result = await clearCart();
+      if (result?.success) {
+        toast({ title: "Cart cleared", description: "All items have been removed from your cart." });
+      } else {
+        toast({
+          title: "Unable to clear your cart",
+          description: "Please try again.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsClearing(false);
+    }
+  };
 
   if (!isCartOpen) return null;
 
@@ -190,9 +215,11 @@ export default function CartDrawer() {
 
                 <div className="flex justify-end pt-1">
                   <button
-                    onClick={clearCart}
-                    className="text-[10px] tracking-wide-2 uppercase text-zinc-500 hover:text-red-400 transition-colors"
+                    onClick={handleClearCart}
+                    disabled={isClearing}
+                    className="inline-flex items-center gap-1.5 text-[10px] tracking-wide-2 uppercase text-zinc-500 hover:text-red-400 transition-colors disabled:opacity-50"
                   >
+                    {isClearing && <Loader2 className="w-3 h-3 animate-spin" />}
                     Clear All Items
                   </button>
                 </div>

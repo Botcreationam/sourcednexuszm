@@ -333,7 +333,7 @@ export async function submitCustomerInquiry(inquiryData, user = null) {
  * Fetch customer cart and wishlist from user_profiles table in Supabase
  */
 export async function getUserCartAndWishlist(userId) {
-  if (!supabase || !userId) return { cart: [], wishlist: [] };
+  if (!supabase || !userId) return null;
   try {
     const { data, error } = await supabase
       .from('user_profiles')
@@ -341,37 +341,74 @@ export async function getUserCartAndWishlist(userId) {
       .eq('id', userId)
       .maybeSingle();
 
-    if (error || !data) return { cart: [], wishlist: [] };
+    // Distinguish "genuinely no profile/cart" (safe empty) from a FAILED read
+    // (network error, expired token, RLS hiccup). Returning null on failure
+    // lets CartContext keep the local echo instead of replacing a user's cart
+    // with an empty one just because one request failed.
+    if (error) {
+      console.warn('Could not read user cart/wishlist from user_profiles:', error);
+      return null;
+    }
+    if (!data) return { cart: [], wishlist: [] };
     return {
       cart: Array.isArray(data.cart) ? data.cart : [],
       wishlist: Array.isArray(data.wishlist) ? data.wishlist : [],
     };
   } catch (err) {
     console.warn('Error fetching user cart/wishlist:', err);
-    return { cart: [], wishlist: [] };
+    return null;
   }
 }
 
 /**
- * Persist customer cart and wishlist to user_profiles table in Supabase
+ * Persist customer cart and wishlist to user_profiles table in Supabase.
+ *
+ * Returns { success, error } so callers (e.g. "Clear Cart") can tell a real
+ * persisted write from a silent no-op and show an honest result instead of
+ * always claiming success.
+ *
+ * Self-healing: a plain .update() affects ZERO rows (no error!) if the
+ * user's profile row doesn't exist yet, which would silently drop the
+ * cart/wishlist write entirely. We detect that with .select() and fall back
+ * to an upsert so the write always actually lands somewhere.
  */
 export async function saveUserCartAndWishlist(userId, cart = [], wishlist = []) {
-  if (!supabase || !userId) return;
+  if (!supabase || !userId) {
+    return { success: false, error: 'Not signed in or storage unavailable.' };
+  }
+  const payload = {
+    cart: Array.isArray(cart) ? cart : [],
+    wishlist: Array.isArray(wishlist) ? wishlist : [],
+    updated_at: new Date().toISOString(),
+  };
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('user_profiles')
-      .update({
-        cart: Array.isArray(cart) ? cart : [],
-        wishlist: Array.isArray(wishlist) ? wishlist : [],
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', userId);
+      .update(payload)
+      .eq('id', userId)
+      .select('id');
 
     if (error) {
       console.warn('Could not sync cart/wishlist to user_profiles:', error);
+      return { success: false, error };
     }
+
+    if (!data || data.length === 0) {
+      // No profile row matched — create it instead of silently losing the write.
+      const { error: upsertError } = await supabase
+        .from('user_profiles')
+        .upsert({ id: userId, ...payload });
+
+      if (upsertError) {
+        console.warn('Could not create user_profiles row for cart/wishlist:', upsertError);
+        return { success: false, error: upsertError };
+      }
+    }
+
+    return { success: true, error: null };
   } catch (err) {
     console.warn('Error saving user cart/wishlist:', err);
+    return { success: false, error: err };
   }
 }
 

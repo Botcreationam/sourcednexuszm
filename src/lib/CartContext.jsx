@@ -11,12 +11,17 @@ import {
 
 const CartContext = createContext(null);
 
-const CART_STORAGE_KEY = "sn_cart_v1";
-const WISHLIST_STORAGE_KEY = "sn_wishlist_v1";
+// v2: renamed from sn_cart_v1 / sn_wishlist_v1 / sn_cart_owner on 2026-10-06.
+// A real cross-account cart leak was traced to these exact keys (see
+// AuthContext.jsx logout() history + the race fixed below); renaming
+// guarantees every browser starts clean under the fixed logic instead of
+// inheriting a possibly-contaminated echo from before the fix.
+const CART_STORAGE_KEY = "sn_cart_v2";
+const WISHLIST_STORAGE_KEY = "sn_wishlist_v2";
 // Tracks WHO the locally stored cart belongs to:
 //   "guest"  -> genuine anonymous guest cart, safe to merge into an account on login
 //   <userId> -> an echo of that authenticated account's cart, NEVER merged into another account
-const CART_OWNER_KEY = "sn_cart_owner";
+const CART_OWNER_KEY = "sn_cart_owner_v2";
 
 function getLocalData(key, fallback = []) {
   if (typeof window === "undefined") return fallback;
@@ -92,15 +97,21 @@ export function CartProvider({ children }) {
         isResettingRef.current = true;
         prevUserId.current = null;
         isInitialSyncDone.current = false;
-        try {
-          setCart([]);
-          setWishlist([]);
-          setLocalData(CART_STORAGE_KEY, []);
-          setLocalData(WISHLIST_STORAGE_KEY, []);
-          setLocalOwner("guest");
-        } finally {
+        setCart([]);
+        setWishlist([]);
+        setLocalData(CART_STORAGE_KEY, []);
+        setLocalData(WISHLIST_STORAGE_KEY, []);
+        setLocalOwner("guest");
+        // Clear the guard on a microtask, NOT synchronously. The sibling
+        // "persist" effect below shares this same commit's effect-flush and
+        // still closes over the PRE-reset cart/wishlist values; if the flag
+        // were cleared synchronously (e.g. in a `finally`) it would already
+        // read `false` by the time that effect runs and re-persist the
+        // stale, about-to-be-replaced cart — undoing the reset we just did.
+        // A microtask only runs once this whole synchronous flush finishes.
+        queueMicrotask(() => {
           isResettingRef.current = false;
-        }
+        });
       }
       return;
     }
@@ -119,6 +130,18 @@ export function CartProvider({ children }) {
         const dbData = await getUserCartAndWishlist(userId);
 
         if (cancelled) return;
+
+        // Read FAILED (offline / expired token / RLS hiccup): do NOT treat it
+        // as "account cart is empty" — that would wipe this device's echo.
+        // Keep whatever is locally present (it is this account's own echo, or
+        // a yet-to-be-merged guest cart) and stay marked so a later
+        // successful sync can reconcile with the database.
+        if (dbData === null) {
+          setCart((prev) => prev);
+          setWishlist((prev) => prev);
+          isInitialSyncDone.current = true;
+          return;
+        }
 
         let mergedCart;
         let mergedWishlist;
@@ -281,12 +304,28 @@ export function CartProvider({ children }) {
     );
   }, []);
 
-  const clearCart = useCallback(() => {
+  // Clears the CURRENT user's cart only, and reports whether the clear
+  // actually persisted. Guest carts have nothing to verify server-side, so
+  // a local-only clear is already the complete, correct operation for them.
+  // For a signed-in user, the frontend state is only updated to empty AFTER
+  // the database write is confirmed — callers (e.g. the "Clear Cart" button)
+  // should wait for this promise before showing a success message, so the
+  // UI never claims a clear that didn't actually happen.
+  const clearCart = useCallback(async () => {
+    if (!isAuthenticated || !user?.id) {
+      setCart([]);
+      setLocalData(CART_STORAGE_KEY, []);
+      return { success: true };
+    }
+
+    const result = await saveUserCartAndWishlist(user.id, [], wishlist);
+    if (!result.success) {
+      return { success: false, error: result.error };
+    }
+
     setCart([]);
     setLocalData(CART_STORAGE_KEY, []);
-    if (isAuthenticated && user?.id) {
-      saveUserCartAndWishlist(user.id, [], wishlist);
-    }
+    return { success: true };
   }, [isAuthenticated, user?.id, wishlist]);
 
   const isInCart = useCallback((productId) => {

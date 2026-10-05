@@ -230,12 +230,13 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(false);
       setIsAdmin(false);
 
-      try {
-        localStorage.removeItem('sn_cart_v1');
-        localStorage.removeItem('sn_wishlist_v1');
-      } catch (err) {
-        console.warn('Could not clear local cart/wishlist:', err);
-      }
+      // Cart/wishlist local storage is intentionally NOT touched here.
+      // CartContext owns that reset exclusively (see its auth-sync effect)
+      // so there is one authoritative place that clears local cart data,
+      // tracks the owner marker, and can't race with this function. Two
+      // independent code paths clearing the same keys was the root cause of
+      // stale carts bleeding into the next account that logged in on this
+      // browser.
 
       if (shouldRedirect) {
         window.location.href = '/';
