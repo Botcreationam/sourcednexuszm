@@ -17,6 +17,7 @@ import {
   supabaseServiceConfigured,
   supabaseRest,
 } from './lib/payza-shared.mjs';
+import { authorizeProcessor, processNotificationQueue } from './lib/product-notifications.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -557,6 +558,27 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+
+    // POST|GET /api/notifications/process - sends queued product-update emails.
+    // Admin JWT or CRON_SECRET only; returns aggregate counts, never addresses.
+    if ((req.method === 'POST' || req.method === 'GET') && reqUrl === '/api/notifications/process') {
+      (async () => {
+        const send = (code, obj) => {
+          res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+          res.end(JSON.stringify(obj));
+        };
+        try {
+          const auth = await authorizeProcessor(req);
+          if (!auth.ok) { send(auth.status, { success: false, error: auth.error }); return; }
+          const result = await processNotificationQueue(req);
+          send(200, { success: true, ...result });
+        } catch (err) {
+          console.error('[notifications] process error:', err.message);
+          send(500, { success: false, error: 'Could not process notifications.' });
+        }
+      })();
+      return;
+    }
 
     if (req.method === 'POST' && (
       reqUrl === '/api/payments/payza/create-order' ||

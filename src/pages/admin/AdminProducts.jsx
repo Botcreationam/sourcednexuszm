@@ -43,6 +43,9 @@ export default function AdminProducts() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [selected, setSelected] = useState(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  // Deliberate opt-in for product emails. Always starts OFF for each save.
+  const [notifyUsers, setNotifyUsers] = useState(false);
+  const [eligibleCount, setEligibleCount] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -77,6 +80,8 @@ export default function AdminProducts() {
     setEditing(null);
     setForm({ ...emptyForm, category: catOptions.length > 0 ? catOptions[0] : "" });
     setImages([]);
+    setNotifyUsers(false); // never inherited from a previous save
+    loadEligibleCount();
     setModalOpen(true);
   };
   const openEdit = (p) => {
@@ -96,6 +101,8 @@ export default function AdminProducts() {
       }),
     });
     setImages(p.images || []);
+    setNotifyUsers(false); // never inherited from a previous save
+    loadEligibleCount();
     setModalOpen(true);
   };
 
@@ -172,6 +179,38 @@ export default function AdminProducts() {
     });
   };
 
+  // Aggregate count only: the admin never sees customer email addresses.
+  const loadEligibleCount = async () => {
+    if (!isSupabaseConfigured) return;
+    const { data, error } = await supabase.rpc("count_eligible_notification_recipients");
+    setEligibleCount(error ? null : data);
+  };
+
+  // Ask the secure server worker to send queued emails. Runs after the product
+  // is already saved, never blocks or fails the save, and reports only counts.
+  const dispatchNotifications = async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) return null;
+      const res = await fetch("/api/notifications/process", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
+  };
+
+  // Look up the event the database created for this save, if any.
+  const findNotificationEvent = async (productId) => {
+    const { data, error } = await supabase.rpc("get_product_notification_status", { p_product_id: productId });
+    if (error || !Array.isArray(data) || data.length === 0) return null;
+    return data[0];
+  };
+
   const save = async (e) => {
     e.preventDefault();
     // Validate before touching the database: only meaningful data gets saved.
@@ -197,14 +236,21 @@ export default function AdminProducts() {
       images,
       grades: form.grades.filter(g => g.price && String(g.price).trim() !== ""),
     };
+    const wantedNotify = Boolean(notifyUsers) && isSupabaseConfigured;
+    // One-shot flag read by the database trigger (which resets it to false, so it
+    // is never sticky). It is only sent when the admin ticks the box, so ordinary
+    // saves keep working even if the notifications migration has not been applied.
+    if (wantedNotify) payload.notify_users = true;
+    let savedProductId = editing?.id || null;
     try {
       if (isSupabaseConfigured) {
         if (editing) {
           const { error } = await supabase.from("products").update(payload).eq("id", editing.id);
           if (error) throw error;
         } else {
-          const { error } = await supabase.from("products").insert([payload]);
+          const { data: inserted, error } = await supabase.from("products").insert([payload]).select("id").single();
           if (error) throw error;
+          savedProductId = inserted?.id || null;
         }
       } else {
         if (editing) await base44.entities.Product.update(editing.id, payload);
@@ -216,9 +262,39 @@ export default function AdminProducts() {
       setImages([]);
       await load(); // revalidate from the database so the new product is truly there
       toast({ title: "Product saved successfully", description: trimmedName + " is now live on the store." });
+
+      // Notifications run strictly AFTER the product is safely saved. Nothing
+      // below can make the save fail or roll it back.
+      if (wantedNotify && savedProductId) {
+        try {
+          const event = await findNotificationEvent(savedProductId);
+          if (!event) {
+            toast({ title: "No notification sent", description: "Nothing customer-facing changed, or this exact update was already announced, so no duplicate email was queued." });
+          } else {
+            toast({ title: "Product notifications queued", description: "Emails for eligible users are being sent in the background. Queued does not mean delivered yet." });
+            const result = await dispatchNotifications();
+            if (result?.success && result.emailConfigured === false) {
+              toast({ title: "Email provider not configured", description: "Notifications are queued safely and will send once EMAIL_API_KEY and EMAIL_FROM_ADDRESS are set on the server.", variant: "destructive" });
+            } else if (result?.success && (result.failed > 0 || result.retried > 0)) {
+              toast({ title: "Some notifications need attention", description: `${result.sent} sent, ${result.retried} will retry, ${result.failed} failed. The product itself is published.`, variant: "destructive" });
+            }
+          }
+        } catch (notifyErr) {
+          console.warn("Notification status check failed:", notifyErr);
+          toast({ title: "Product saved, notification status unknown", description: "The product is published. Queued emails will still be processed.", variant: "destructive" });
+        }
+      }
+      setNotifyUsers(false);
     } catch (err) {
       console.error("Save error:", err);
-      toast({ title: "Unable to save product", description: err?.message || "Please check your connection and try again.", variant: "destructive" });
+      const missingMigration = /notify_users/i.test(err?.message || "");
+      toast({
+        title: "Unable to save product",
+        description: missingMigration
+          ? "The product-notification database update has not been applied yet. Untick \"Notify users\" to save without emails, or run the notifications migration first."
+          : (err?.message || "Please check your connection and try again."),
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
@@ -459,6 +535,28 @@ export default function AdminProducts() {
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-2">Upload from your phone or computer. Images are optimized automatically.</p>
               </In>
+
+              {isSupabaseConfigured && (
+                <div className="border border-border bg-muted/20 p-4 space-y-1.5">
+                  <label className="flex items-start gap-2.5 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={notifyUsers}
+                      onChange={(e) => setNotifyUsers(e.target.checked)}
+                      className="accent-foreground mt-0.5"
+                    />
+                    <span>
+                      <span className="block font-medium">Notify users about this product</span>
+                      <span className="block text-[11px] text-muted-foreground font-light">
+                        {editing
+                          ? "Emails customers only if something customer-facing changed (name, price, description, image, category, availability)."
+                          : "Emails customers who have product-update notifications turned on."}
+                        {eligibleCount !== null && ` Eligible recipients: ${eligibleCount} user${eligibleCount === 1 ? "" : "s"}.`}
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              )}
 
               <div className="flex gap-3 pt-2">
                 <button type="submit" disabled={saving} className="flex-1 bg-foreground text-background py-3 text-[11px] tracking-wide-2 uppercase hover:opacity-85 disabled:opacity-50">

@@ -31,6 +31,7 @@ const Accessibility = lazy(() => import('./pages/Accessibility'));
 const RefundPolicy = lazy(() => import('./pages/RefundPolicy'));
 const TermsAndConditions = lazy(() => import('./pages/TermsAndConditions'));
 const Messages = lazy(() => import('./pages/Messages'));
+const AccountNotifications = lazy(() => import('./pages/AccountNotifications'));
 const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
 const AdminProducts = lazy(() => import('./pages/admin/AdminProducts'));
 const AdminCategories = lazy(() => import('./pages/admin/AdminCategories'));
@@ -79,6 +80,7 @@ const AuthenticatedApp = () => {
         <Route path="/terms" element={<TermsAndConditions />} />
         <Route path="/messages" element={<Messages />} />
         <Route path="/checkout" element={<Checkout />} />
+        <Route path="/account/notifications" element={<AccountNotifications />} />
       </Route>
 
       {/* Admin */}

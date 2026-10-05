@@ -20,6 +20,10 @@ export default function PreferencesModal({ open, onClose, onOpenInterests }) {
   const [marketingConsent, setMarketingConsent] = useState(false);
   const [resetDone, setResetDone] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Product-update emails: stored on the user's own user_profiles row.
+  const [productEmails, setProductEmails] = useState(true);
+  const [productEmailsLoading, setProductEmailsLoading] = useState(false);
+  const [productEmailsError, setProductEmailsError] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -28,6 +32,47 @@ export default function PreferencesModal({ open, onClose, onOpenInterests }) {
       setResetDone(false);
     }
   }, [open, user]);
+
+  // Load the saved product-update preference (defaults to ON when no row yet).
+  useEffect(() => {
+    if (!open || !user?.id || !supabase) return;
+    let cancelled = false;
+    setProductEmailsLoading(true);
+    setProductEmailsError("");
+    supabase
+      .from("user_profiles")
+      .select("product_notifications_enabled")
+      .eq("id", user.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          setProductEmailsError("Could not load your email preference.");
+        } else {
+          setProductEmails(data ? data.product_notifications_enabled !== false : true);
+        }
+      })
+      .finally(() => { if (!cancelled) setProductEmailsLoading(false); });
+    return () => { cancelled = true; };
+  }, [open, user?.id]);
+
+  const handleToggleProductEmails = async (checked) => {
+    if (!user?.id || !supabase) return;
+    const previous = productEmails;
+    setProductEmails(checked);
+    setProductEmailsError("");
+    setProductEmailsLoading(true);
+    // Upsert on the user's own id: RLS only permits writing your own row, so
+    // this can never change another user's preference.
+    const { error } = await supabase
+      .from("user_profiles")
+      .upsert({ id: user.id, product_notifications_enabled: checked, updated_at: new Date().toISOString() }, { onConflict: "id" });
+    if (error) {
+      setProductEmails(previous); // honest rollback: do not pretend it saved
+      setProductEmailsError("Could not save your preference. Please try again.");
+    }
+    setProductEmailsLoading(false);
+  };
 
   const handleTogglePersonalization = (checked) => {
     setPersonalization(checked);
@@ -146,6 +191,32 @@ export default function PreferencesModal({ open, onClose, onOpenInterests }) {
               aria-label="Toggle marketing consent"
             />
           </div>
+
+          {/* Email Notifications: Product Updates */}
+          {user && (
+            <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-2">
+              <h4 className="font-medium text-foreground text-xs uppercase tracking-wide-2">Email Notifications</h4>
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-0.5">
+                  <Label className="text-xs uppercase tracking-wide-2 text-foreground font-medium">
+                    Product Updates
+                  </Label>
+                  <p className="text-xs text-muted-foreground font-light">
+                    Receive emails when new products are published or important product information is updated.
+                  </p>
+                </div>
+                <Switch
+                  checked={productEmails}
+                  onCheckedChange={handleToggleProductEmails}
+                  disabled={productEmailsLoading}
+                  aria-label="Toggle product update emails"
+                />
+              </div>
+              {productEmailsError && (
+                <p role="alert" className="text-[11px] text-destructive">{productEmailsError}</p>
+              )}
+            </div>
+          )}
 
           {/* Reset Personalization History */}
           <div className="pt-2 border-t border-border flex items-center justify-between">
