@@ -43,6 +43,7 @@ const AdminModeration = lazy(() => import('./pages/admin/AdminModeration'));
 import { CartProvider } from '@/lib/CartContext';
 
 import BrandedLoader from '@/components/BrandedLoader';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, authChecked } = useAuth();
@@ -117,6 +118,7 @@ function AnalyticsTracker() {
 function App() {
 
   return (
+    <ErrorBoundary>
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme" attribute="class">
       <AuthProvider>
         <CartProvider>
@@ -131,6 +133,7 @@ function App() {
         </CartProvider>
       </AuthProvider>
     </ThemeProvider>
+    </ErrorBoundary>
   )
 }
 

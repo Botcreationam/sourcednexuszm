@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, X, Upload, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useToast } from "@/components/ui/use-toast";
 import { isSupabaseConfigured, supabase, uploadImageToSupabase } from "@/lib/supabase";
 
 const empty = { name: "", slug: "", description: "", image: "" };
@@ -8,6 +9,8 @@ const empty = { name: "", slug: "", description: "", image: "" };
 export default function AdminCategories() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const { toast } = useToast();
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(empty);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -16,6 +19,7 @@ export default function AdminCategories() {
 
   const load = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       if (isSupabaseConfigured) {
         const { data, error } = await supabase.from("categories").select("*").order("display_order", { ascending: true });
@@ -26,6 +30,7 @@ export default function AdminCategories() {
       setCategories(data);
     } catch (err) {
       console.error("Load categories error:", err);
+      setLoadError(err?.message || "Could not load categories.");
     } finally {
       setLoading(false);
     }
@@ -68,10 +73,22 @@ export default function AdminCategories() {
 
   const save = async (e) => {
     e.preventDefault();
-    if (!form.name) return;
+    const trimmedName = String(form.name || "").trim();
+    if (!trimmedName) {
+      toast({ title: "Missing category name", description: "Please enter a category name before saving.", variant: "destructive" });
+      return;
+    }
+    // Guard against invisible duplicates (same name ignoring spaces/case)
+    const duplicate = categories.some(
+      (c) => String(c.name || "").trim().toLowerCase() === trimmedName.toLowerCase() && c.id !== editing?.id
+    );
+    if (duplicate) {
+      toast({ title: "Category already exists", description: "A category with this name already exists.", variant: "destructive" });
+      return;
+    }
     setSaving(true);
-    const slug = form.slug || form.name.toLowerCase().replace(/\s+/g, "-");
-    const payload = { ...form, slug };
+    const slug = (form.slug || trimmedName).trim().toLowerCase().replace(/\s+/g, "-").replace(/-+$/, "");
+    const payload = { ...form, name: trimmedName, slug };
     try {
       if (isSupabaseConfigured) {
         if (editing) {
@@ -88,10 +105,11 @@ export default function AdminCategories() {
       setEditing(null);
       setIsModalOpen(false);
       setForm(empty);
-      load();
+      await load();
+      toast({ title: "Category saved successfully", description: trimmedName + " is now available on the store." });
     } catch (err) {
       console.error("Category save error:", err);
-      alert("Failed to save category: " + (err.message || "Unknown error"));
+      toast({ title: "Unable to save category", description: err?.message || "Please check your connection and try again.", variant: "destructive" });
     } finally {
       setSaving(false);
     }

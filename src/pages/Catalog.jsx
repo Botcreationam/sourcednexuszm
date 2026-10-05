@@ -1,6 +1,6 @@
-import { useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { SlidersHorizontal, X, SlidersHorizontal as TuneIcon, Percent, ChevronRight } from "lucide-react";
+import { SlidersHorizontal, X, SlidersHorizontal as TuneIcon, Percent, ChevronRight, AlertTriangle, RefreshCw } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { isSupabaseConfigured, getSupabaseProducts, supabase } from "@/lib/supabase";
 import {
@@ -77,6 +77,7 @@ export default function Catalog() {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [params, setParams] = useSearchParams();
   // Search query lives in the URL so the navbar search bar and the catalog
   // page share one source of truth.
@@ -131,11 +132,12 @@ export default function Catalog() {
 
   const [categories, setCategories] = useState(["All"]);
 
-  useEffect(() => {
-    async function loadData() {
+  const loadData = useCallback(async () => {
+    setLoadError(null);
+    setLoading(true);
       try {
         if (isSupabaseConfigured) {
-          const [sp, sc] = await Promise.all([
+          let [sp, sc] = await Promise.all([
             getSupabaseProducts({ limit: 200 }),
             supabase.from("categories").select("name").order("display_order", { ascending: true })
           ]);
@@ -146,11 +148,24 @@ export default function Catalog() {
             // Fallback to base44 if Supabase has no products yet
             const bProducts = await base44.entities.Product.list("-created_date", 200);
             setProducts(bProducts || []);
+            sp = bProducts || [];
           }
 
-          if (sc.data && sc.data.length > 0) {
-            setCategories(["All", ...sc.data.map(c => c.name)]);
+          // Build chips from the categories table first, then include any
+          // category value used by products that has no category row yet,
+          // so no product can ever become unreachable under a missing chip.
+          const catNames = (sc.data || []).map(c => c.name);
+          const seen = new Set(catNames.map(n => String(n).toLowerCase().trim()));
+          const orphanCats = [];
+          for (const prod of (sp || [])) {
+            const raw = String(prod.category || "").trim();
+            const key = raw.toLowerCase();
+            if (raw && !seen.has(key)) {
+              seen.add(key);
+              orphanCats.push(raw);
+            }
           }
+          setCategories(["All", ...catNames, ...orphanCats]);
           setLoading(false);
           return;
         }
@@ -159,12 +174,15 @@ export default function Catalog() {
         setProducts(bProducts || []);
       } catch (err) {
         console.error("Failed to load catalog data:", err);
+        setLoadError(err?.message || "Could not load the catalog.");
       } finally {
         setLoading(false);
       }
-    }
-    loadData();
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   // Keep recommendations live when activity/interests change
   useEffect(() => {
@@ -445,6 +463,18 @@ export default function Catalog() {
         <div className="mx-auto max-w-7xl px-5 md:px-8">
           {loading ? (
             <BrandedLoader fullScreen={false} text="Loading Catalog..." />
+          ) : loadError ? (
+            <div className="text-center py-20 border border-border">
+              <AlertTriangle className="w-8 h-8 mx-auto text-[#C5A059]" aria-hidden="true" />
+              <p className="font-display text-2xl mt-4">Products are temporarily unavailable</p>
+              <p className="text-sm text-muted-foreground mt-2">Please check your connection and try again.</p>
+              <button
+                onClick={() => loadData()}
+                className="mt-6 inline-flex items-center gap-2 px-6 py-3 text-[11px] tracking-wide-2 uppercase bg-[#C5A059] text-black hover:bg-[#b8914f] transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" aria-hidden="true" /> Retry
+              </button>
+            </div>
           ) : (
             <>
               <div className="flex items-baseline justify-between mb-6 md:mb-8 gap-3">

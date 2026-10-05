@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from 'react';
+import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import ScrollReveal from "@/components/site/ScrollReveal";
@@ -7,43 +8,40 @@ import SectionHeading from "@/components/site/SectionHeading";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import BrandedLoader from "@/components/BrandedLoader";
 
-const DEFAULTS = [
-  { name: "Electronics", img: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=800&q=80" },
-  { name: "Watches", img: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=800&q=80" },
-  { name: "Dresses", img: "https://media.base44.com/images/public/6abc6a8a4b6c9d175aa35566/d51d95ee0_IMG_7842.jpeg" },
-  { name: "Suits", img: "https://media.base44.com/images/public/6abc6a8a4b6c9d175aa35566/cd6535153_IMG_7593.jpeg" },
-  { name: "Shoes", img: "https://media.base44.com/images/public/6abc6a8a4b6c9d175aa35566/45ca4d997_IMG_7913.jpeg" },
-  { name: "Heels", img: "https://media.base44.com/images/public/6abc6a8a4b6c9d175aa35566/54f2cdec4_IMG_7898.jpeg" },
-  { name: "Bags & Accessories", img: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=800&q=80" },
-  { name: "Perfumes", img: "https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&fit=crop&w=800&q=80" },
-];
 
 export default function Categories() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
-  useEffect(() => {
-    const fetchCats = async () => {
-      try {
-        if (isSupabaseConfigured) {
-          const { data, error } = await supabase.from("categories").select("*").order("display_order", { ascending: true });
-          if (!error && data && data.length > 0) {
-            setCategories(data);
-            return;
-          }
+  const fetchCats = useCallback(async () => {
+    setLoadError(null);
+    setLoading(true);
+    try {
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase.from("categories").select("*").order("display_order", { ascending: true });
+        if (error) throw error;
+        if (data && data.length > 0) {
+          setCategories(data);
+          return;
         }
-        const data = await base44.entities.Category.list("-created_date", 50);
-        setCategories(data);
-      } catch (err) {
-        console.error("Categories fetch error:", err);
-      } finally {
-        setLoading(false);
       }
-    };
-    fetchCats();
+      const data = await base44.entities.Category.list("-created_date", 50);
+      setCategories(data || []);
+    } catch (err) {
+      console.error("Categories fetch error:", err);
+      setLoadError(err?.message || "Could not load categories.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const list = categories.length > 0 ? categories.map((c) => ({ name: c.name, img: c.image })) : DEFAULTS;
+  useEffect(() => {
+    fetchCats();
+  }, [fetchCats]);
+
+  // Only real data from the database is shown — never a hardcoded list.
+  const list = categories.map((c) => ({ name: c.name, img: c.image }));
 
   return (
     <div className="pt-20">
@@ -57,6 +55,23 @@ export default function Categories() {
         <div className="mx-auto max-w-7xl px-5 md:px-8">
           {loading ? (
             <BrandedLoader fullScreen={false} text="Loading Categories..." />
+          ) : loadError ? (
+            <div className="text-center py-20 border border-border">
+              <AlertTriangle className="w-8 h-8 mx-auto text-[#C5A059]" aria-hidden="true" />
+              <p className="font-display text-2xl mt-4">Categories are temporarily unavailable</p>
+              <p className="text-sm text-muted-foreground mt-2">Please check your connection and try again.</p>
+              <button
+                onClick={() => fetchCats()}
+                className="mt-6 inline-flex items-center gap-2 px-6 py-3 text-[11px] tracking-wide-2 uppercase bg-[#C5A059] text-black hover:bg-[#b8914f] transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" aria-hidden="true" /> Retry
+              </button>
+            </div>
+          ) : list.length === 0 ? (
+            <div className="text-center py-20">
+              <p className="font-display text-2xl">No categories yet</p>
+              <p className="text-sm text-muted-foreground mt-2">New collections are on the way. Check back soon.</p>
+            </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
               {list.map((c, i) => (

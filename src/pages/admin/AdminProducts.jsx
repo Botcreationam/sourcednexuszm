@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, Eye, EyeOff, X, Upload, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useToast } from "@/components/ui/use-toast";
 import { isSupabaseConfigured, supabase, uploadImageToSupabase } from "@/lib/supabase";
 import { formatKwachaPrice } from "@/lib/utils";
 import {
@@ -31,6 +32,8 @@ export default function AdminProducts() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const { toast } = useToast();
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [images, setImages] = useState([]);
@@ -43,6 +46,7 @@ export default function AdminProducts() {
 
   const load = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       if (isSupabaseConfigured) {
         const [pRes, cRes] = await Promise.all([
@@ -61,6 +65,7 @@ export default function AdminProducts() {
       setCategories(c);
     } catch (err) {
       console.error("Load error:", err);
+      setLoadError(err?.message || "Could not load products.");
     } finally {
       setLoading(false);
     }
@@ -169,10 +174,24 @@ export default function AdminProducts() {
 
   const save = async (e) => {
     e.preventDefault();
-    if (!form.name) return;
+    // Validate before touching the database: only meaningful data gets saved.
+    const trimmedName = String(form.name || "").trim();
+    const trimmedCategory = String(form.category || "").trim();
+    if (!trimmedName) {
+      toast({ title: "Missing product name", description: "Please enter a product name before saving.", variant: "destructive" });
+      return;
+    }
+    if (!trimmedCategory) {
+      toast({ title: "Missing category", description: "Please select a category. If the list is empty, create one under Categories first.", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     const payload = {
       ...form,
+      name: trimmedName,
+      category: trimmedCategory,
+      description: String(form.description || "").trim(),
+      delivery_info: String(form.delivery_info || "").trim(),
       sizes: form.sizes.split(",").map((s) => s.trim()).filter(Boolean),
       colors: form.colors.split(",").map((s) => s.trim()).filter(Boolean),
       images,
@@ -195,10 +214,11 @@ export default function AdminProducts() {
       setEditing(null);
       setForm(emptyForm);
       setImages([]);
-      load();
+      await load(); // revalidate from the database so the new product is truly there
+      toast({ title: "Product saved successfully", description: trimmedName + " is now live on the store." });
     } catch (err) {
       console.error("Save error:", err);
-      alert("Failed to save product: " + (err.message || "Unknown error"));
+      toast({ title: "Unable to save product", description: err?.message || "Please check your connection and try again.", variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -215,20 +235,29 @@ export default function AdminProducts() {
       }
     } catch (err) {
       console.error("Delete failed:", err);
-      alert("Failed to delete product: " + (err.message || "Permission denied"));
+      toast({ title: "Unable to delete product", description: err?.message || "Please try again.", variant: "destructive" });
+      setDeleteTarget(null);
+      return;
     }
     setDeleteTarget(null);
-    load();
+    await load();
+    toast({ title: "Product deleted" });
   };
 
   const toggleHide = async (p) => {
     const nextStatus = p.status === "hidden" ? "available" : "hidden";
-    if (isSupabaseConfigured) {
-      await supabase.from("products").update({ status: nextStatus }).eq("id", p.id);
-    } else {
-      await base44.entities.Product.update(p.id, { status: nextStatus });
+    try {
+      if (isSupabaseConfigured) {
+        const { error } = await supabase.from("products").update({ status: nextStatus }).eq("id", p.id);
+        if (error) throw error;
+      } else {
+        await base44.entities.Product.update(p.id, { status: nextStatus });
+      }
+    } catch (err) {
+      toast({ title: "Unable to update product", description: err?.message || "Please try again.", variant: "destructive" });
+      return;
     }
-    load();
+    await load();
   };
 
   const toggleSelect = (id) => setSelected((prev) => {
@@ -255,7 +284,7 @@ export default function AdminProducts() {
     load();
   };
 
-  const catOptions = Array.from(new Set(categories.map((c) => c.name)));
+  const catOptions = Array.from(new Set(categories.map((c) => String(c.name || "").trim()).filter(Boolean)));
 
   return (
     <div className="p-6 md:p-10 max-w-6xl">
@@ -355,7 +384,7 @@ export default function AdminProducts() {
                 <In label="Price in Kwacha (optional)"><input value={form.price} onChange={(e) => update("price", e.target.value)} placeholder="e.g. K350 — leave blank for 'Price on request'" className={inp} /></In>
                 <In label="Category">
                   <select value={form.category} onChange={(e) => update("category", e.target.value)} className={inp}>
-                    {catOptions.map((c) => <option key={c}>{c}</option>)}
+                    {catOptions.map((c) => <option key={c} value={c.trim()}>{c.trim()}</option>)}
                   </select>
                 </In>
                 <In label="Status">

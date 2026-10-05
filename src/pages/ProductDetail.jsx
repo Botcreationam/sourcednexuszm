@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from "react-router-dom";
-import { Truck, ChevronLeft, X, ZoomIn, Heart, ShoppingBag, Check, Plus, Minus, MessageCircle, Send } from "lucide-react";
+import { Truck, ChevronLeft, X, ZoomIn, Heart, ShoppingBag, Check, Plus, Minus, MessageCircle, Send, AlertTriangle, RefreshCw } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { buildWhatsAppUrl, buildCartInquiryWhatsAppMessage, WHATSAPP_DISPLAY } from "@/lib/whatsapp";
@@ -21,6 +21,7 @@ export default function ProductDetail() {
   const { id } = useParams();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [activeImg, setActiveImg] = useState(0);
   const [lightbox, setLightbox] = useState(false);
   const [metrics, setMetrics] = useState({ view_count: 0, like_count: 0, review_count: 0, average_rating: 0 });
@@ -44,9 +45,10 @@ export default function ProductDetail() {
     openInquiryModal,
   } = useCart();
 
-  useEffect(() => {
+  const loadProduct = useCallback(async () => {
     setLoading(true);
-    async function loadProduct() {
+    setLoadError(null);
+    async function loadProductInner() {
       try {
         if (isSupabaseConfigured && supabase) {
           const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
@@ -79,12 +81,23 @@ export default function ProductDetail() {
         setActiveImg(0);
       } catch (err) {
         console.error("Failed to load product details:", err);
+        setLoadError(err?.message || "Could not load this product.");
       } finally {
         setLoading(false);
       }
     }
-    loadProduct();
+    return loadProductInner();
   }, [id]);
+
+  // Retry after a failed load
+  const retryLoad = useCallback(() => {
+    loadProduct();
+  }, [loadProduct]);
+
+  // Initial load — runs on mount and whenever the product id changes
+  useEffect(() => {
+    loadProduct();
+  }, [loadProduct]);
 
   // Related products: same category (excluding this product) for
   // "You May Also Like" / "More From This Category" recommendations
@@ -131,6 +144,24 @@ export default function ProductDetail() {
     setMeta("name", "twitter:description", desc);
     if (img) setMeta("name", "twitter:image", img);
   }, [product]);
+
+  if (loadError && !product) {
+    return (
+      <div className="pt-24 pb-24">
+        <div className="mx-auto max-w-md px-5 text-center">
+          <AlertTriangle className="w-8 h-8 mx-auto text-[#C5A059]" aria-hidden="true" />
+          <p className="font-display text-2xl mt-4">This product is temporarily unavailable</p>
+          <p className="text-sm text-muted-foreground mt-2">Please check your connection and try again.</p>
+          <button
+            onClick={retryLoad}
+            className="mt-6 inline-flex items-center gap-2 px-6 py-3 text-[11px] tracking-wide-2 uppercase bg-[#C5A059] text-black hover:bg-[#b8914f] transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" aria-hidden="true" /> Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return <BrandedLoader fullScreen={false} text="Loading Product Details..." />;

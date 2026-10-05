@@ -16,6 +16,11 @@ import {
   Info,
 } from "lucide-react";
 
+// Online payments are not enabled yet. Flip to true when the payment
+// provider is configured and verified end-to-end; the full Payza checkout
+// flow is preserved below and reactivates automatically.
+const PAYMENTS_ENABLED = false;
+
 // Payment result states for the UI
 const UI_STATE = {
   FORM: "form",
@@ -50,6 +55,12 @@ export default function Checkout() {
     const flow = searchParams.get("payza");
     const ref = searchParams.get("ref");
     if (!flow || !ref) return;
+    // While payments are disabled, just clean stale return parameters and
+    // show the standard checkout instead of touching payment endpoints.
+    if (!PAYMENTS_ENABLED) {
+      setSearchParams({}, { replace: true });
+      return;
+    }
     let orderNumber = null;
     try {
       const saved = JSON.parse(sessionStorage.getItem("sn_payza_ref") || "null");
@@ -388,16 +399,32 @@ export default function Checkout() {
               </div>
             )}
 
-            <button
-              onClick={handlePayWithPayza}
-              disabled={payableItems.length === 0}
-              className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 text-[12px] tracking-wide-2 uppercase bg-[#C5A059] text-black hover:bg-[#b8914f] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              <CreditCard className="w-4 h-4" /> Pay with Payza
-            </button>
-            <p className="mt-3 flex items-center gap-2 text-[10px] tracking-wide-2 uppercase text-muted-foreground">
-              <Lock className="w-3.5 h-3.5" /> Airtel Money, MTN & Zamtel • Secured by Payza
-            </p>
+            {PAYMENTS_ENABLED ? (
+              <>
+                <button
+                  onClick={handlePayWithPayza}
+                  disabled={payableItems.length === 0}
+                  className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 text-[12px] tracking-wide-2 uppercase bg-[#C5A059] text-black hover:bg-[#b8914f] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <CreditCard className="w-4 h-4" /> Pay with Payza
+                </button>
+                <p className="mt-3 flex items-center gap-2 text-[10px] tracking-wide-2 uppercase text-muted-foreground">
+                  <Lock className="w-3.5 h-3.5" /> Airtel Money, MTN & Zamtel • Secured by Payza
+                </p>
+              </>
+            ) : (
+              <div className="border border-border bg-muted/30 p-6 text-center">
+                <div className="mx-auto w-12 h-12 rounded-full border border-border flex items-center justify-center mb-4">
+                  <Clock className="w-5 h-5 text-[#C5A059]" aria-hidden="true" />
+                </div>
+                <p className="font-display text-lg tracking-wide uppercase">Payment Method Coming Soon</p>
+                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                  Online payments are being finalized and will be available shortly. Your cart is saved
+                  exactly as it is. In the meantime, items can still be reserved through an inquiry or
+                  arranged directly over WhatsApp.
+                </p>
+              </div>
+            )}
           </section>
         </div>
       )}
