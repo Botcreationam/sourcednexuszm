@@ -6,33 +6,39 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
-import Home from './pages/Home';
-import Checkout from './pages/Checkout';
-import Catalog from './pages/Catalog';
-import ProductDetail from './pages/ProductDetail';
-import Categories from './pages/Categories';
-import PreOrder from './pages/PreOrder';
-import HowItWorks from './pages/HowItWorks';
-import Contact from './pages/Contact';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import Privacy from './pages/Privacy';
-import Accessibility from './pages/Accessibility';
-import RefundPolicy from './pages/RefundPolicy';
-import TermsAndConditions from './pages/TermsAndConditions';
-import Messages from './pages/Messages';
+import { lazy, Suspense } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import SiteLayout from '@/components/site/SiteLayout';
-import Dashboard from './pages/admin/Dashboard';
-import AdminProducts from './pages/admin/AdminProducts';
-import AdminCategories from './pages/admin/AdminCategories';
-import AdminPreorders from './pages/admin/AdminPreorders';
-import AdminOrders from './pages/admin/AdminOrders';
-import AdminInquiries from './pages/admin/AdminInquiries';
-import AdminInbox from './pages/admin/AdminInbox';
-import AdminModeration from './pages/admin/AdminModeration';
+
+// Route-level code splitting: each page ships as its own chunk so the first
+// load only downloads what the visitor's route needs. This matters on slow
+// mobile connections — previously every page (including all admin screens
+// and charts) arrived in one 1.6MB bundle before anything could render.
+const Home = lazy(() => import('./pages/Home'));
+const Checkout = lazy(() => import('./pages/Checkout'));
+const Catalog = lazy(() => import('./pages/Catalog'));
+const ProductDetail = lazy(() => import('./pages/ProductDetail'));
+const Categories = lazy(() => import('./pages/Categories'));
+const PreOrder = lazy(() => import('./pages/PreOrder'));
+const HowItWorks = lazy(() => import('./pages/HowItWorks'));
+const Contact = lazy(() => import('./pages/Contact'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const Privacy = lazy(() => import('./pages/Privacy'));
+const Accessibility = lazy(() => import('./pages/Accessibility'));
+const RefundPolicy = lazy(() => import('./pages/RefundPolicy'));
+const TermsAndConditions = lazy(() => import('./pages/TermsAndConditions'));
+const Messages = lazy(() => import('./pages/Messages'));
+const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
+const AdminProducts = lazy(() => import('./pages/admin/AdminProducts'));
+const AdminCategories = lazy(() => import('./pages/admin/AdminCategories'));
+const AdminPreorders = lazy(() => import('./pages/admin/AdminPreorders'));
+const AdminOrders = lazy(() => import('./pages/admin/AdminOrders'));
+const AdminInquiries = lazy(() => import('./pages/admin/AdminInquiries'));
+const AdminInbox = lazy(() => import('./pages/admin/AdminInbox'));
+const AdminModeration = lazy(() => import('./pages/admin/AdminModeration'));
 
 import { CartProvider } from '@/lib/CartContext';
 
@@ -48,6 +54,7 @@ const AuthenticatedApp = () => {
 
   // Render the main app — visitors browse freely without being forced to authenticate
   return (
+    <Suspense fallback={<BrandedLoader text="Loading Sourced Nexus..." />}>
     <Routes>
       {/* Customer Auth */}
       <Route path="/login" element={<Login />} />
@@ -87,6 +94,7 @@ const AuthenticatedApp = () => {
 
       <Route path="*" element={<PageNotFound />} />
     </Routes>
+    </Suspense>
   );
 };
 
