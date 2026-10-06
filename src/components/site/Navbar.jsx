@@ -10,6 +10,7 @@ import OnboardingModal from "./OnboardingModal";
 import SignOutModal from "./SignOutModal";
 import NotificationsDrawer from "./NotificationsDrawer";
 import { ModeToggle } from "@/components/ModeToggle";
+import { productPath } from "@/lib/productUrl";
 
 const LINKS = [
   { label: "Home", to: "/" },
@@ -198,7 +199,7 @@ export default function Navbar() {
   const handleNavSuggestionPick = (p) => {
     setShowNavSuggestions(false);
     setDesktopSearchOpen(false);
-    navigate(`/product/${p.id}`);
+    navigate(productPath(p));
   };
 
   const closeDesktopSearch = () => {

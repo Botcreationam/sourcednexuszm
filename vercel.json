@@ -30,6 +30,10 @@
       "destination": "/api/payza-webhook"
     },
     {
+      "source": "/product/:param",
+      "destination": "/api/product-page?p=:param"
+    },
+    {
       "source": "/api/shop/:path*",
       "destination": "/api/shop?p=:path*"
     },

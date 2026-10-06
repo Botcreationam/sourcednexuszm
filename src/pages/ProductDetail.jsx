@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, Link } from "react-router-dom";
-import { Truck, ChevronLeft, X, ZoomIn, Heart, ShoppingBag, Check, Plus, Minus, MessageCircle, Send, AlertTriangle, RefreshCw } from "lucide-react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { Truck, ChevronLeft, X, ZoomIn, Heart, ShoppingBag, Check, Plus, Minus, MessageCircle, Send, AlertTriangle, RefreshCw, Share2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { buildWhatsAppUrl, buildCartInquiryWhatsAppMessage, WHATSAPP_DISPLAY } from "@/lib/whatsapp";
@@ -14,11 +14,14 @@ import BrandedLoader from "@/components/BrandedLoader";
 import ProductChat from "@/components/site/ProductChat";
 import ProductInteractions from "@/components/site/ProductInteractions";
 import HorizontalProductSection from "@/components/site/HorizontalProductSection";
+import { productPath, parseProductParam, productShareUrl } from "@/lib/productUrl";
 
 const STATUS_LABELS = { available: "Available", preorder: "Pre-Order", soldout: "Sold Out" };
 
 export default function ProductDetail() {
-  const { id } = useParams();
+  const { id: routeParam } = useParams();
+  const navigate = useNavigate();
+  const parsedParam = parseProductParam(routeParam);
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -51,14 +54,25 @@ export default function ProductDetail() {
     async function loadProductInner() {
       try {
         if (isSupabaseConfigured && supabase) {
-          const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
+          let query = supabase.from("products").select("*");
+          if (parsedParam?.id) {
+            query = query.eq("id", parsedParam.id);
+          } else if (parsedParam?.tail) {
+            query = query
+              .gte("id", `${parsedParam.tail}-0000-0000-0000-000000000000`)
+              .lte("id", `${parsedParam.tail}-ffff-ffff-ffff-ffffffffffff`);
+          } else {
+            query = query.eq("id", routeParam);
+          }
+          const { data: found, error } = await query.limit(2);
+          const data = Array.isArray(found) && found.length === 1 ? found[0] : null;
           if (data && !error) {
             setProduct(data);
             recordProductView(data);
             recordCategoryView(data.category);
             
             // Fetch metrics
-            const { data: metricsData } = await supabase.from("product_metrics").select("*").eq("product_id", id).maybeSingle();
+            const { data: metricsData } = await supabase.from("product_metrics").select("*").eq("product_id", data.id).maybeSingle();
             if (metricsData) setMetrics(metricsData);
             
             setActiveImg(0);
@@ -69,7 +83,7 @@ export default function ProductDetail() {
             return;
           }
         }
-        const bProduct = await base44.entities.Product.get(id);
+        const bProduct = await base44.entities.Product.get(parsedParam?.id || routeParam);
         setProduct(bProduct);
         if (bProduct) {
           recordProductView(bProduct);
@@ -87,7 +101,7 @@ export default function ProductDetail() {
       }
     }
     return loadProductInner();
-  }, [id]);
+  }, [routeParam]);
 
   // Retry after a failed load
   const retryLoad = useCallback(() => {
@@ -125,25 +139,19 @@ export default function ProductDetail() {
     return () => { cancelled = true; };
   }, [product?.id, product?.category]);
 
-  // Dynamically update social preview meta tags for this product
+  // Social preview tags (og:*, twitter:*, canonical, JSON-LD) are produced on
+  // the SERVER (lib/product-meta.mjs) because link-preview crawlers never run
+  // JavaScript. Here we only (1) keep the tab title in sync while browsing
+  // inside the app and (2) move old / renamed / bare-id URLs to the canonical
+  // one so the address bar, and anything copied from it, is the shareable link.
   useEffect(() => {
     if (!product) return;
-    const setMeta = (attr, key, content) => {
-      let el = document.querySelector(`meta[${attr}="${key}"]`);
-      if (!el) { el = document.createElement("meta"); el.setAttribute(attr, key); document.head.appendChild(el); }
-      el.setAttribute("content", content);
-    };
-    const img = product.images?.[0];
-    const desc = product.description || `Curated ${product.category} for ${product.price || "Price on request"}. Sourced Nexus, Lusaka.`;
     document.title = `${product.name} | Sourced Nexus`;
-    setMeta("property", "og:title", product.name);
-    setMeta("property", "og:description", desc);
-    setMeta("property", "og:url", window.location.href);
-    if (img) setMeta("property", "og:image", img);
-    setMeta("name", "twitter:title", product.name);
-    setMeta("name", "twitter:description", desc);
-    if (img) setMeta("name", "twitter:image", img);
-  }, [product]);
+    const canonical = productPath(product);
+    if (window.location.pathname.toLowerCase() !== canonical.toLowerCase()) {
+      navigate(canonical + window.location.search, { replace: true });
+    }
+  }, [product, navigate]);
 
   if (loadError && !product) {
     return (
@@ -250,6 +258,23 @@ export default function ProductDetail() {
       specifications,
     };
     openInquiryModal([singleItem]);
+  };
+
+  // Share the canonical product link. The server renders this exact URL's
+  // preview (image, title, description) for WhatsApp, Facebook, X, etc.
+  const handleShare = async () => {
+    const url = productShareUrl(product);
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `${product.name} | Sourced Nexus`, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      toast({ title: "Link copied", description: "Paste it into any chat to share this product." });
+    } catch (err) {
+      if (err?.name === "AbortError") return; // user closed the share sheet
+      toast({ title: "Could not copy the link", description: url, variant: "destructive" });
+    }
   };
 
   const handleDirectWhatsApp = () => {
@@ -513,6 +538,14 @@ export default function ProductDetail() {
                   className="w-full bg-[#1f7a4c] hover:bg-[#165c39] text-white py-3.5 text-[11px] tracking-wide-2 uppercase font-medium transition-colors flex items-center justify-center gap-2"
                 >
                   <MessageCircle className="w-4 h-4" /> Inquire via WhatsApp
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  className="w-full border border-border hover:border-foreground text-foreground py-3.5 text-[11px] tracking-wide-2 uppercase font-medium transition-colors flex items-center justify-center gap-2 mt-2"
+                >
+                  <Share2 className="w-4 h-4" /> Share this product
                 </button>
 
                 {/* New Direct Messaging Chat Button */}

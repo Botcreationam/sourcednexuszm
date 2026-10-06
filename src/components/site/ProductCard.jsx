@@ -6,6 +6,7 @@ import { formatKwachaPrice } from "@/lib/utils";
 import { recordProductView } from "@/lib/recommendations";
 import { useCart } from "@/lib/CartContext";
 import { toast } from "@/components/ui/use-toast";
+import { productPath } from "@/lib/productUrl";
 
 const STATUS_STYLES = {
   available: "bg-foreground text-background",
@@ -76,7 +77,7 @@ export default function ProductCard({ product }) {
   return (
     <div className="group snap-start relative h-full flex flex-col justify-between">
       <div>
-        <Link to={`/product/${product.id}`} onClick={handleCardClick} className="block">
+        <Link to={productPath(product)} onClick={handleCardClick} className="block">
           <div className="relative aspect-[3/4] overflow-hidden bg-zinc-900">
             {/* Skeleton while loading */}
             {img && !imageLoaded && !imageFailed && (
@@ -124,7 +125,7 @@ export default function ProductCard({ product }) {
         </Link>
         <div className="mt-3.5 space-y-1">
           <p className="text-[10px] tracking-wide-2 uppercase text-muted-foreground">{product.category}</p>
-          <Link to={`/product/${product.id}`} onClick={handleCardClick} className="block">
+          <Link to={productPath(product)} onClick={handleCardClick} className="block">
             <h3
               className="font-display text-xl leading-snug hover:text-foreground/70 transition-colors line-clamp-2 min-h-[3.25rem] flex items-start"
               title={product.name}
@@ -163,7 +164,7 @@ export default function ProductCard({ product }) {
         </button>
 
         <Link
-          to={`/product/${product.id}`}
+          to={productPath(product)}
           onClick={handleCardClick}
           className="flex-1 text-center text-[10px] tracking-wide-2 uppercase border border-border/80 text-foreground/80 py-2.5 hover:bg-muted transition-colors flex items-center justify-center"
         >

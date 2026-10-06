@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { X, Heart, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
 import { useCart } from "@/lib/CartContext";
 import { formatKwachaPrice } from "@/lib/utils";
+import { productPath } from "@/lib/productUrl";
 
 export default function WishlistDrawer() {
   const {
@@ -97,7 +98,7 @@ export default function WishlistDrawer() {
                       <div>
                         <div className="flex items-start justify-between gap-2">
                           <Link
-                            to={`/product/${item.id}`}
+                            to={productPath({ id: item.id, name: item.name })}
                             onClick={closeWishlist}
                             className="font-display text-sm text-white hover:text-[#C5A059] transition-colors line-clamp-1"
                           >
@@ -132,7 +133,7 @@ export default function WishlistDrawer() {
                         </button>
 
                         <Link
-                          to={`/product/${item.id}`}
+                          to={productPath({ id: item.id, name: item.name })}
                           onClick={closeWishlist}
                           className="text-[10px] tracking-wide-2 uppercase text-zinc-400 hover:text-white"
                         >

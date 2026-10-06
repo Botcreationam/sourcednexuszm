@@ -5,6 +5,7 @@ import { useCart } from "@/lib/CartContext";
 import { formatKwachaPrice } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { priceCart, priceLine, formatMoney } from "@/lib/cartPricing";
+import { productPath } from "@/lib/productUrl";
 
 export default function CartDrawer() {
   const {
@@ -136,7 +137,7 @@ export default function CartDrawer() {
                       <div>
                         <div className="flex items-start justify-between gap-2">
                           <Link
-                            to={`/product/${item.id}`}
+                            to={productPath({ id: item.id, name: item.name })}
                             onClick={closeCart}
                             className="font-display text-sm text-white hover:text-[#C5A059] transition-colors line-clamp-1"
                           >

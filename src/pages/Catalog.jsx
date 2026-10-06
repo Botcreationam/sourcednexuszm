@@ -24,6 +24,7 @@ import OnboardingModal from "@/components/site/OnboardingModal";
 import PreferencesModal from "@/components/site/PreferencesModal";
 import { useAuth } from "@/lib/AuthContext";
 import { formatKwachaPrice } from "@/lib/utils";
+import { productPath } from "@/lib/productUrl";
 
 const SORTS = [
   { value: "newest", label: "Newest" },
@@ -514,7 +515,7 @@ export default function Catalog() {
             <div className="mx-auto max-w-7xl px-5 md:px-8">
               <button
                 type="button"
-                onClick={() => navigate(`/product/${newArrivalBanner.id}`)}
+                onClick={() => navigate(productPath(newArrivalBanner))}
                 className="group relative w-full flex items-center gap-4 rounded-2xl border border-border bg-card hover:bg-muted/40 p-4 text-left transition-colors"
               >
                 {newArrivalBanner.images?.[0] ? (

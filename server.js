@@ -21,6 +21,7 @@ import {
 import { authorizeProcessor, processNotificationQueue } from './lib/product-notifications.mjs';
 import { processAnnouncements, sendAnnouncementTest } from './lib/announcements.mjs';
 import { handleShopRequest } from './lib/shop-api.mjs';
+import { resolveProductRequest } from './lib/product-meta.mjs';
 import { confirmedOrderSummary } from './lib/order-receipts.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -115,90 +116,6 @@ function injectEnv(html) {
 }
 
 // ── Production Base URL for absolute OG tags ──
-const PRODUCTION_BASE_URL = 'https://sourcednexus.online';
-const DEFAULT_OG_IMAGE = `${PRODUCTION_BASE_URL}/og-image.jpg`;
-
-// ── Escape HTML entities in OG content values ──
-function escapeAttr(str) {
-  return String(str || '')
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
-
-// ── Fetch a product from Supabase by UUID ──
-async function fetchProductById(productId) {
-  const supabaseUrl = process.env.VITE_SUPABASE_URL;
-  const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !supabaseKey) return null;
-  try {
-    const r = await fetch(
-      `${supabaseUrl}/rest/v1/products?id=eq.${encodeURIComponent(productId)}&select=id,name,description,price,category,images&limit=1`,
-      {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Accept': 'application/json',
-        },
-        signal: AbortSignal.timeout(4000),
-      }
-    );
-    if (!r.ok) return null;
-    const rows = await r.json();
-    return rows?.[0] || null;
-  } catch {
-    return null;
-  }
-}
-
-// ── Inject dynamic OG + Twitter meta tags for a specific product ──
-function injectProductOG(html, product) {
-  const title = escapeAttr(product.name);
-  const desc = escapeAttr(
-    product.description ||
-    `Curated ${product.category || 'luxury item'} — ${product.price || 'Price on request'}. Sourced Nexus, Lusaka.`
-  );
-  const productUrl = `${PRODUCTION_BASE_URL}/product/${product.id}`;
-  const image = product.images?.[0] || DEFAULT_OG_IMAGE;
-  const imageUrl = escapeAttr(image);
-
-  // Strip existing OG/Twitter/canonical/title/description tags to prevent duplicates
-  let cleaned = html
-    .replace(/<title>[^<]*<\/title>/i, '')
-    .replace(/<meta\s+name=["']description["'][^>]*\/?>/gi, '')
-    .replace(/<meta\s+property=["']og:[^"']+["'][^>]*\/?>/gi, '')
-    .replace(/<meta\s+name=["']twitter:[^"']+["'][^>]*\/?>/gi, '')
-    .replace(/<link\s+rel=["']canonical["'][^>]*\/?>/gi, '');
-
-  const metaBlock = `
-    <title>${title} — Sourced Nexus</title>
-    <meta name="description" content="${desc}" />
-    <link rel="canonical" href="${escapeAttr(productUrl)}" />
-    <meta property="og:type" content="product" />
-    <meta property="og:site_name" content="Sourced Nexus" />
-    <meta property="og:title" content="${title}" />
-    <meta property="og:description" content="${desc}" />
-    <meta property="og:url" content="${escapeAttr(productUrl)}" />
-    <meta property="og:image" content="${imageUrl}" />
-    <meta property="og:image:secure_url" content="${imageUrl}" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="${title}" />
-    <meta property="og:locale" content="en_US" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="${title}" />
-    <meta name="twitter:description" content="${desc}" />
-    <meta name="twitter:image" content="${imageUrl}" />
-    <meta name="twitter:image:alt" content="${title}" />
-  `;
-
-  if (cleaned.includes('</head>')) {
-    return cleaned.replace('</head>', `${metaBlock}</head>`);
-  }
-  return metaBlock + cleaned;
-}
-
 // Helmet security headers middleware
 const helmetHandler = helmet({
   contentSecurityPolicy: {
@@ -933,16 +850,29 @@ const server = http.createServer((req, res) => {
 
             let html = injectEnv(indexHtml.toString('utf8'));
 
-            // ── Dynamic OG for /product/:id routes ──
-            const productMatch = reqUrl.match(/^\/product\/([a-f0-9-]{36})/i);
+            // Product pages: server-side, product-specific <head> (Open Graph,
+            // Twitter, canonical, JSON-LD), 301 for old/renamed URLs, real 404
+            // for deleted or unpublished products. See lib/product-meta.mjs.
+            const productMatch = reqUrl.match(/^\/product\/([^/]+)\/?$/);
             if (productMatch) {
               try {
-                const product = await fetchProductById(productMatch[1]);
-                if (product) {
-                  html = injectProductOG(html, product);
+                const result = await resolveProductRequest(productMatch[1], html);
+                if (result.type === 'redirect') {
+                  res.writeHead(result.status, { Location: result.location, 'Cache-Control': 'public, max-age=300' });
+                  res.end();
+                  return;
+                }
+                if (result.type === 'html') {
+                  res.writeHead(result.status, {
+                    'Content-Type': 'text/html; charset=utf-8',
+                    // Always revalidate: an admin edit shows up on the next request
+                    'Cache-Control': result.status === 200 ? 'public, max-age=0, must-revalidate' : 'public, max-age=60',
+                  });
+                  res.end(result.html);
+                  return;
                 }
               } catch (e) {
-                console.error('[og-inject] Failed to fetch product:', e.message);
+                console.error('[product-meta] failed:', e.message);
               }
             }
 
