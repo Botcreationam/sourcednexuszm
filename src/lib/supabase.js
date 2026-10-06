@@ -30,6 +30,22 @@ export const supabase = isSupabaseConfigured
  * @param {number} [options.maxSizeMB=5] Max size in megabytes
  * @returns {Promise<boolean>}
  */
+/** Max size for admin catalog photos (product / category). Originals are kept as-is. */
+export const MAX_CATALOG_IMAGE_MB = 25;
+
+/** Read an image's real pixel size without altering the file. */
+export function readImageDimensions(file) {
+  return new Promise((resolve) => {
+    try {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => { resolve({ width: img.naturalWidth, height: img.naturalHeight }); URL.revokeObjectURL(url); };
+      img.onerror = () => { resolve(null); URL.revokeObjectURL(url); };
+      img.src = url;
+    } catch { resolve(null); }
+  });
+}
+
 export async function validateImageFile(file, { maxSizeMB = 5 } = {}) {
   if (!file) {
     throw new Error('Please select an image file to upload.');
@@ -109,7 +125,9 @@ export async function uploadImageToSupabase(file, bucket = 'product-images', cus
     throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
   }
 
-  await validateImageFile(file);
+  // Admin catalog images are uploaded in ORIGINAL quality: the exact bytes of
+  // the chosen file are stored. Nothing here resizes, crops or re-encodes.
+  await validateImageFile(file, { maxSizeMB: MAX_CATALOG_IMAGE_MB });
 
   const fileExt = file.name ? file.name.split('.').pop().toLowerCase() : 'jpg';
   const cleanExt = ['jpg', 'jpeg', 'png', 'webp'].includes(fileExt) ? fileExt : 'jpg';

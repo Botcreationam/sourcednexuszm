@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, Eye, EyeOff, X, Upload, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
-import { isSupabaseConfigured, supabase, uploadImageToSupabase } from "@/lib/supabase";
+import { isSupabaseConfigured, supabase, uploadImageToSupabase, MAX_CATALOG_IMAGE_MB } from "@/lib/supabase";
 import { formatKwachaPrice } from "@/lib/utils";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -116,12 +116,19 @@ export default function AdminProducts() {
       return;
     }
     for (const f of files) {
-      if (f.size > 5 * 1024 * 1024) {
-        alert(`File ${f.name} exceeds the 5MB size limit.`);
+      if (f.size > MAX_CATALOG_IMAGE_MB * 1024 * 1024) {
+        alert(`${f.name} is ${(f.size / 1048576).toFixed(1)}MB. The limit is ${MAX_CATALOG_IMAGE_MB}MB per photo.`);
+        e.target.value = "";
         return;
       }
-      if (!f.type.startsWith("image/")) {
-        alert(`File ${f.name} is not a valid image.`);
+      if (/heic|heif/i.test(f.type) || /\.(heic|heif)$/i.test(f.name)) {
+        alert(`${f.name} is a HEIC photo, which browsers cannot show. On iPhone set Settings > Camera > Formats > Most Compatible, or share the photo as JPG.`);
+        e.target.value = "";
+        return;
+      }
+      if (!/^image\/(jpe?g|png|webp)$/i.test(f.type)) {
+        alert(`${f.name} must be a JPG, PNG or WebP photo.`);
+        e.target.value = "";
         return;
       }
     }
@@ -530,10 +537,10 @@ export default function AdminProducts() {
                   ))}
                   <label className="w-20 h-24 border border-dashed border-border flex items-center justify-center cursor-pointer hover:border-foreground">
                     {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5 text-muted-foreground" />}
-                    <input type="file" accept="image/*" multiple onChange={onFiles} className="hidden" />
+                    <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={onFiles} className="hidden" />
                   </label>
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-2">Upload from your phone or computer. Images are optimized automatically.</p>
+                <p className="text-[11px] text-muted-foreground mt-2">Photos are stored in original quality, exactly as you upload them (JPG, PNG or WebP, up to {MAX_CATALOG_IMAGE_MB}MB each). Nothing is resized or compressed. For the sharpest result use photos at least 1200px wide.</p>
               </In>
 
               {isSupabaseConfigured && (

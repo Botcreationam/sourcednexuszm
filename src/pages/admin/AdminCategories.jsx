@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, X, Upload, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
-import { isSupabaseConfigured, supabase, uploadImageToSupabase } from "@/lib/supabase";
+import { isSupabaseConfigured, supabase, uploadImageToSupabase, MAX_CATALOG_IMAGE_MB } from "@/lib/supabase";
 
 const empty = { name: "", slug: "", description: "", image: "" };
 
@@ -44,8 +44,8 @@ export default function AdminCategories() {
   const onFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      alert(`File ${file.name} exceeds the 5MB size limit.`);
+    if (file.size > MAX_CATALOG_IMAGE_MB * 1024 * 1024) {
+      alert(`${file.name} is ${(file.size / 1048576).toFixed(1)}MB. The limit is ${MAX_CATALOG_IMAGE_MB}MB per photo.`);
       return;
     }
     if (!file.type.startsWith("image/")) {
