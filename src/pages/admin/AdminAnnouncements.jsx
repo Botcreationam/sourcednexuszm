@@ -235,7 +235,7 @@ export default function AdminAnnouncements() {
                 id="ann-btn-url"
                 value={buttonUrl}
                 onChange={(e) => setButtonUrl(e.target.value)}
-                placeholder="https://sourcednexuszm.vercel.app/shop"
+                placeholder="https://sourcednexus.online/catalog"
                 inputMode="url"
                 className={`${inputClass} ${urlInvalid ? "border-destructive" : ""}`}
               />

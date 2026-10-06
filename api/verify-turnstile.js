@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     const expectedAction = payload.action;
 
     const turnstileSecret = process.env.TURNSTILE_SECRET;
-    const rawHostnames = process.env.TURNSTILE_HOSTNAMES || "localhost,127.0.0.1,sourcednexuszm.vercel.app";
+    const rawHostnames = process.env.TURNSTILE_HOSTNAMES || "localhost,127.0.0.1,sourcednexus.online,www.sourcednexus.online,sourcednexuszm.vercel.app";
     const expectedHostnames = new Set(
       rawHostnames.split(",").map((h) => h.trim()).filter(Boolean)
     );

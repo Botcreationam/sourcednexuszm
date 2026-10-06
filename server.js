@@ -112,7 +112,7 @@ function injectEnv(html) {
 }
 
 // ── Production Base URL for absolute OG tags ──
-const PRODUCTION_BASE_URL = 'https://sourcednexuszm.vercel.app';
+const PRODUCTION_BASE_URL = 'https://sourcednexus.online';
 const DEFAULT_OG_IMAGE = `${PRODUCTION_BASE_URL}/og-image.jpg`;
 
 // ── Escape HTML entities in OG content values ──
@@ -364,7 +364,7 @@ const server = http.createServer((req, res) => {
           const expectedAction = payload.action;
 
           const turnstileSecret = process.env.TURNSTILE_SECRET;
-          const rawHostnames = process.env.TURNSTILE_HOSTNAMES || "localhost,127.0.0.1,sourcednexuszm.vercel.app";
+          const rawHostnames = process.env.TURNSTILE_HOSTNAMES || "localhost,127.0.0.1,sourcednexus.online,www.sourcednexus.online,sourcednexuszm.vercel.app";
           const expectedHostnames = new Set(
             rawHostnames
               .split(",")
