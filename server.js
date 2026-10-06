@@ -18,6 +18,7 @@ import {
   supabaseRest,
 } from './lib/payza-shared.mjs';
 import { authorizeProcessor, processNotificationQueue } from './lib/product-notifications.mjs';
+import { processAnnouncements, sendAnnouncementTest } from './lib/announcements.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -575,6 +576,45 @@ const server = http.createServer((req, res) => {
         } catch (err) {
           console.error('[notifications] process error:', err.message);
           send(500, { success: false, error: 'Could not process notifications.' });
+        }
+      })();
+      return;
+    }
+
+    // POST|GET /api/announcements/process - sends admin announcements, or (action:"test")
+    // one preview to the signed-in admin. Admin session / CRON_SECRET only.
+    if ((req.method === 'POST' || req.method === 'GET') && reqUrl === '/api/announcements/process') {
+      (async () => {
+        const send = (code, obj) => {
+          res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+          res.end(JSON.stringify(obj));
+        };
+        try {
+          const auth = await authorizeProcessor(req);
+          if (!auth.ok) { send(auth.status, { success: false, error: auth.error }); return; }
+          let body = {};
+          if (req.method === 'POST') {
+            body = await new Promise((resolve) => {
+              let raw = '';
+              req.on('data', (c) => { raw += c; if (raw.length > 20000) req.destroy(); });
+              req.on('end', () => { try { resolve(JSON.parse(raw || '{}')); } catch { resolve({}); } });
+              req.on('error', () => resolve({}));
+            });
+          }
+          if (body.action === 'test') {
+            if (auth.via !== 'admin') { send(403, { success: false, error: 'Administrator access required.' }); return; }
+            const subject = String(body.subject || '').trim().slice(0, 150);
+            const message = String(body.message || '').trim().slice(0, 5000);
+            if (!subject || !message) { send(400, { success: false, error: 'Subject and message are required.' }); return; }
+            const r = await sendAnnouncementTest(req, { subject, message, buttonLabel: body.buttonLabel, buttonUrl: body.buttonUrl, adminUserId: auth.userId });
+            send(r.ok ? 200 : 502, { success: r.ok, ...(r.ok ? {} : { error: r.error }) });
+            return;
+          }
+          const result = await processAnnouncements(req);
+          send(200, { success: true, ...result });
+        } catch (err) {
+          console.error('[announcements] error:', err.message);
+          send(500, { success: false, error: 'Could not process announcements.' });
         }
       })();
       return;

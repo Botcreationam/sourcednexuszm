@@ -40,6 +40,7 @@ const AdminOrders = lazy(() => import('./pages/admin/AdminOrders'));
 const AdminInquiries = lazy(() => import('./pages/admin/AdminInquiries'));
 const AdminInbox = lazy(() => import('./pages/admin/AdminInbox'));
 const AdminModeration = lazy(() => import('./pages/admin/AdminModeration'));
+const AdminAnnouncements = lazy(() => import('./pages/admin/AdminAnnouncements'));
 
 import { CartProvider } from '@/lib/CartContext';
 
@@ -93,6 +94,7 @@ const AuthenticatedApp = () => {
         <Route path="preorders" element={<AdminPreorders />} />
         <Route path="orders" element={<AdminOrders />} />
         <Route path="moderation" element={<AdminModeration />} />
+        <Route path="announcements" element={<AdminAnnouncements />} />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />
