@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /secure/
+Disallow: /api/
+Disallow: /checkout
+Disallow: /messages
+Disallow: /account/
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+
+Sitemap: https://sourcednexus.online/sitemap.xml

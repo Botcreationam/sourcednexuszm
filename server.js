@@ -1,3 +1,4 @@
+import { renderSitemap } from './lib/sitemap.mjs';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -578,6 +579,15 @@ const server = http.createServer((req, res) => {
           send(500, { success: false, error: 'Could not process notifications.' });
         }
       })();
+      return;
+    }
+
+    // GET /sitemap.xml - dynamic: static pages + all public products.
+    if ((req.method === 'GET' || req.method === 'HEAD') && reqUrl === '/sitemap.xml') {
+      renderSitemap().then((xml) => {
+        res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
+        res.end(req.method === 'HEAD' ? undefined : xml);
+      }).catch(() => { res.writeHead(500); res.end(); });
       return;
     }
 
