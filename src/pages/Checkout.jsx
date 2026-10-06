@@ -16,10 +16,9 @@ import {
   Info,
 } from "lucide-react";
 
-// Online payments are not enabled yet. Flip to true when the payment
-// provider is configured and verified end-to-end; the full Payza checkout
-// flow is preserved below and reactivates automatically.
-const PAYMENTS_ENABLED = false;
+// Online payments via Payza (Airtel Money, MTN, Zamtel). The backend keys are
+// configured and the signed webhook is verified end-to-end.
+const PAYMENTS_ENABLED = true;
 
 // Payment result states for the UI
 const UI_STATE = {
