@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { Link2, Check, Facebook, Twitter, Share2 } from "lucide-react";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { productShareUrl } from "@/lib/productUrl";
 
 export default function ShareBar({ product }) {
   const [copied, setCopied] = useState(false);
-  const url = typeof window !== "undefined" ? window.location.href : "";
+  // Always the clean canonical product link (no query string, no #fragment, no
+  // old uuid form), so every platform previews exactly this product.
+  const url = typeof window !== "undefined" ? productShareUrl(product) : "";
   const text = `Check out "${product.name}" at Sourced Nexus`;
 
   const copy = async () => {

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Truck, ChevronLeft, X, ZoomIn, Heart, ShoppingBag, Check, Plus, Minus, MessageCircle, Send, AlertTriangle, RefreshCw, Share2 } from "lucide-react";
+import { Truck, ChevronLeft, X, ZoomIn, Heart, ShoppingBag, Check, Plus, Minus, MessageCircle, Send, AlertTriangle, RefreshCw } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { buildWhatsAppUrl, buildCartInquiryWhatsAppMessage, WHATSAPP_DISPLAY } from "@/lib/whatsapp";
@@ -14,7 +14,7 @@ import BrandedLoader from "@/components/BrandedLoader";
 import ProductChat from "@/components/site/ProductChat";
 import ProductInteractions from "@/components/site/ProductInteractions";
 import HorizontalProductSection from "@/components/site/HorizontalProductSection";
-import { productPath, parseProductParam, productShareUrl } from "@/lib/productUrl";
+import { productPath, parseProductParam } from "@/lib/productUrl";
 
 const STATUS_LABELS = { available: "Available", preorder: "Pre-Order", soldout: "Sold Out" };
 
@@ -258,23 +258,6 @@ export default function ProductDetail() {
       specifications,
     };
     openInquiryModal([singleItem]);
-  };
-
-  // Share the canonical product link. The server renders this exact URL's
-  // preview (image, title, description) for WhatsApp, Facebook, X, etc.
-  const handleShare = async () => {
-    const url = productShareUrl(product);
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: `${product.name} | Sourced Nexus`, url });
-        return;
-      }
-      await navigator.clipboard.writeText(url);
-      toast({ title: "Link copied", description: "Paste it into any chat to share this product." });
-    } catch (err) {
-      if (err?.name === "AbortError") return; // user closed the share sheet
-      toast({ title: "Could not copy the link", description: url, variant: "destructive" });
-    }
   };
 
   const handleDirectWhatsApp = () => {
@@ -538,14 +521,6 @@ export default function ProductDetail() {
                   className="w-full bg-[#1f7a4c] hover:bg-[#165c39] text-white py-3.5 text-[11px] tracking-wide-2 uppercase font-medium transition-colors flex items-center justify-center gap-2"
                 >
                   <MessageCircle className="w-4 h-4" /> Inquire via WhatsApp
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleShare}
-                  className="w-full border border-border hover:border-foreground text-foreground py-3.5 text-[11px] tracking-wide-2 uppercase font-medium transition-colors flex items-center justify-center gap-2 mt-2"
-                >
-                  <Share2 className="w-4 h-4" /> Share this product
                 </button>
 
                 {/* New Direct Messaging Chat Button */}
