@@ -283,7 +283,7 @@ export default function ProductDetail() {
 
         <div className="grid md:grid-cols-2 gap-8 md:gap-14">
           {/* Gallery */}
-          <div>
+          <div className="min-w-0">
             <div className="relative aspect-[3/4] overflow-hidden bg-muted group cursor-zoom-in" onClick={() => images[activeImg] && setLightbox(true)}>
               {images[activeImg] ? (
                 <img
@@ -320,7 +320,7 @@ export default function ProductDetail() {
           </div>
 
           {/* Info */}
-          <div>
+          <div className="min-w-0">
             <ScrollReveal>
               <div className="flex items-center justify-between">
                 <p className="text-[11px] tracking-luxe uppercase text-muted-foreground">{product.category}</p>
