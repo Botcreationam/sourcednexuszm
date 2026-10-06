@@ -10,6 +10,7 @@ credentials, no real money, and no network access to Payza/Supabase.
 ```bash
 node tests/payza-payments/test-payza.mjs  # unit/state-machine tests (82 checks)
 node tests/payza-payments/test-e2e.mjs    # real server.js HTTP endpoints (33 checks)
+node tests/payza-payments/test-receipts.mjs # multi-item totals, receipts, email retry, access control (86 checks)
 ```
 
 Both suites exit non-zero if any check fails.
@@ -40,3 +41,14 @@ Both suites exit non-zero if any check fails.
   are rejected for online payment.
 - Secrets (sk_ key, webhook signing secret, service role key) never appear
   in any API response payload.
+
+## Receipts and multi-item totals (test-receipts.mjs)
+
+Adds a mock email provider. Covers: K1,000 / K2,600 / five-product totals,
+quantity changes on a reused order, item removal, the server quote
+(per-line, price-on-request and bundle prices never guessed), a receipt only
+after a VERIFIED payment (failed, pending, cancelled, underpaid and wrong
+currency send nothing), the receipt frozen against later catalog changes,
+email failure leaving the payment PAID with a retry, a duplicate webhook
+creating one receipt and one email, and customers only ever seeing their own
+orders and receipts.

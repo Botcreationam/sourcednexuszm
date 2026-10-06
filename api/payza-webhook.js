@@ -47,7 +47,7 @@ export default async function handler(req, res) {
       // Defense in depth: re-verify with Payza before applying any state change.
       const payzaResult = await verifyPayzaPayment(reference);
       if (!payzaResult.error) {
-        await applyPaymentResult(reference, payzaResult, { source: 'webhook' });
+        await applyPaymentResult(reference, payzaResult, { source: 'webhook', req });
       }
     }
     // Always acknowledge valid events so Payza stops retrying.

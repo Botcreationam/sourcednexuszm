@@ -40,6 +40,7 @@ export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const [orderItems, setOrderItems] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [receipts, setReceipts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
 
@@ -47,15 +48,18 @@ export default function AdminOrders() {
     if (!supabase || !user) return;
     setLoading(true);
     try {
-      const [ordersRes, itemsRes, paymentsRes] = await Promise.all([
+      const [ordersRes, itemsRes, paymentsRes, receiptsRes] = await Promise.all([
         supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(200),
         supabase.from("order_items").select("*").order("created_at", { ascending: false }).limit(1000),
         supabase.from("payments").select("*").order("created_at", { ascending: false }).limit(500),
+        supabase.from("order_receipts").select("order_id,receipt_number,email_status,email_attempts,email_last_error,email_sent_at").limit(500),
       ]);
       if (ordersRes.error) throw ordersRes.error;
       setOrders(ordersRes.data || []);
       setOrderItems(itemsRes.data || []);
       setPayments(paymentsRes.data || []);
+      // Receipts are optional: before the migration runs this simply returns an error
+      setReceipts(receiptsRes.error ? [] : receiptsRes.data || []);
     } catch (err) {
       console.error("Failed to load orders:", err.message);
     } finally {
@@ -82,6 +86,9 @@ export default function AdminOrders() {
     }
   }
 
+  const receiptByOrder = {};
+  for (const r of receipts) receiptByOrder[r.order_id] = r;
+
   const filtered = query.trim()
     ? orders.filter((o) => {
         const q = query.trim().toLowerCase();
@@ -90,6 +97,7 @@ export default function AdminOrders() {
           o.order_number?.toLowerCase().includes(q) ||
           o.customer_email?.toLowerCase().includes(q) ||
           pay?.reference?.toLowerCase().includes(q) ||
+          receiptByOrder[o.id]?.receipt_number?.toLowerCase().includes(q) ||
           (itemsByOrder[o.id] || []).some((i) => i.product_name?.toLowerCase().includes(q))
         );
       })
@@ -138,7 +146,7 @@ export default function AdminOrders() {
         </div>
       ) : (
         <div className="border border-border overflow-x-auto">
-          <table className="w-full text-sm min-w-[900px]">
+          <table className="w-full text-sm min-w-[1050px]">
             <thead>
               <tr className="border-b border-border bg-muted/30 text-left">
                 <th className="px-4 py-3 text-[10px] tracking-wide-2 uppercase text-muted-foreground font-medium">Order</th>
@@ -148,6 +156,7 @@ export default function AdminOrders() {
                 <th className="px-4 py-3 text-[10px] tracking-wide-2 uppercase text-muted-foreground font-medium">Payment</th>
                 <th className="px-4 py-3 text-[10px] tracking-wide-2 uppercase text-muted-foreground font-medium">Reference</th>
                 <th className="px-4 py-3 text-[10px] tracking-wide-2 uppercase text-muted-foreground font-medium">Status</th>
+                <th className="px-4 py-3 text-[10px] tracking-wide-2 uppercase text-muted-foreground font-medium">Receipt email</th>
                 <th className="px-4 py-3 text-[10px] tracking-wide-2 uppercase text-muted-foreground font-medium">Date</th>
               </tr>
             </thead>
@@ -169,11 +178,14 @@ export default function AdminOrders() {
                       )}
                     </td>
                     <td className="px-4 py-3 max-w-[260px]">
+                      <p className="text-[10px] tracking-wide-2 uppercase text-muted-foreground mb-1">
+                        {items.length} {items.length === 1 ? "item" : "items"} • {items.reduce((n, i) => n + Number(i.quantity || 0), 0)} units
+                      </p>
                       {items.map((item, i) => (
                         <p key={i} className="text-xs leading-relaxed">
                           <span className="font-medium">{item.product_name}</span>
                           {item.grade_name ? <span className="text-[#C5A059]"> • {item.grade_name}</span> : null}
-                          <span className="text-muted-foreground"> × {item.quantity}</span>
+                          <span className="text-muted-foreground"> × {item.quantity} @ {formatKwachaPrice(item.unit_price)} = {formatKwachaPrice(item.line_total)}</span>
                         </p>
                       ))}
                     </td>
@@ -210,6 +222,22 @@ export default function AdminOrders() {
                       <p className="text-[10px] tracking-wide-2 uppercase text-muted-foreground mt-1">
                         {ORDER_STATUS_LABELS[order.status] || order.status}
                       </p>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs">
+                      {receiptByOrder[order.id] ? (
+                        <>
+                          <span className={receiptByOrder[order.id].email_status === "sent" ? "text-[#C5A059]" : "text-muted-foreground"}>
+                            {receiptByOrder[order.id].email_status === "sent"
+                              ? "Sent"
+                              : receiptByOrder[order.id].email_status === "failed"
+                              ? `Failed (retrying, ${receiptByOrder[order.id].email_attempts} tries)`
+                              : "Queued"}
+                          </span>
+                          <p className="text-[10px] text-muted-foreground">{receiptByOrder[order.id].receipt_number}</p>
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">{isPaid ? "Pending" : "-"}</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">
                       {isPaid && pay?.completed_at

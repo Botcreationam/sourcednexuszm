@@ -283,8 +283,22 @@ export function CartProvider({ children }) {
     }
   }, []);
 
+  // Remove ONE cart line by its exact line key (product + size + color + grade).
+  // A bare product id is accepted for legacy callers, but it only removes that
+  // product's lines when no line key matches, so removing one variant can never
+  // silently delete the customer's other variants of the same product.
   const removeFromCart = useCallback((cartItemKeyOrId) => {
-    setCart((prev) => prev.filter((i) => i.itemKey !== cartItemKeyOrId && i.id !== cartItemKeyOrId));
+    setCart((prev) => {
+      const exact = prev.some((i) => i.itemKey === cartItemKeyOrId);
+      if (exact) return prev.filter((i) => i.itemKey !== cartItemKeyOrId);
+      return prev.filter((i) => i.id !== cartItemKeyOrId);
+    });
+  }, []);
+
+  // Remove exactly the line a product page / card added: same variant, same key.
+  const removeProductVariant = useCallback((productId, { size = null, color = null, gradeName = null } = {}) => {
+    const key = getCartItemKey(productId, size, color, gradeName);
+    setCart((prev) => prev.filter((i) => i.itemKey !== key));
   }, []);
 
   const updateCartQuantity = useCallback((cartItemKey, newQty) => {
@@ -297,6 +311,18 @@ export function CartProvider({ children }) {
       prev.map((item) => (item.itemKey === cartItemKey ? { ...item, quantity: qty } : item))
     );
   }, [removeFromCart]);
+
+  // Refresh a stored DISPLAY price after the server's quote showed it changed.
+  // The server never reads this value; it re-prices every line itself.
+  const updateCartItemPrice = useCallback((cartItemKey, newPrice) => {
+    setCart((prev) =>
+      prev.map((item) =>
+        item.itemKey === cartItemKey
+          ? { ...item, price: String(newPrice), gradePrice: String(newPrice) }
+          : item
+      )
+    );
+  }, []);
 
   const updateCartItemSpecs = useCallback((cartItemKey, specs) => {
     setCart((prev) =>
@@ -328,7 +354,13 @@ export function CartProvider({ children }) {
     return { success: true };
   }, [isAuthenticated, user?.id, wishlist]);
 
-  const isInCart = useCallback((productId) => {
+  // isInCart(productId)                 -> any variant of the product is in the cart
+  // isInCart(productId, {size,color,gradeName}) -> that exact variant is in the cart
+  const isInCart = useCallback((productId, variant) => {
+    if (variant) {
+      const key = getCartItemKey(productId, variant.size ?? null, variant.color ?? null, variant.gradeName ?? null);
+      return cart.some((item) => item.itemKey === key);
+    }
     return cart.some((item) => item.id === productId);
   }, [cart]);
 
@@ -410,7 +442,9 @@ export function CartProvider({ children }) {
     cartCount,
     addToCart,
     removeFromCart,
+    removeProductVariant,
     updateCartQuantity,
+    updateCartItemPrice,
     updateCartItemSpecs,
     clearCart,
     isInCart,

@@ -16,7 +16,7 @@ const db = {
     category: 'Suits', price: 'K 1,500', status: 'available', images: [],
     grades: [{ name: 'First Grade', price: '1500', original_price: '2000', discount_percentage: 25 }],
   }],
-  orders: [], order_items: [], payments: [],
+  orders: [], order_items: [], payments: [], order_receipts: [],
   user_profiles: [{ id: 'u-customer', cart: [] }],
 };
 

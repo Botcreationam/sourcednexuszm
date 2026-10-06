@@ -32,6 +32,7 @@ const RefundPolicy = lazy(() => import('./pages/RefundPolicy'));
 const TermsAndConditions = lazy(() => import('./pages/TermsAndConditions'));
 const Messages = lazy(() => import('./pages/Messages'));
 const AccountNotifications = lazy(() => import('./pages/AccountNotifications'));
+const MyOrders = lazy(() => import('./pages/MyOrders'));
 const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
 const AdminProducts = lazy(() => import('./pages/admin/AdminProducts'));
 const AdminCategories = lazy(() => import('./pages/admin/AdminCategories'));
@@ -82,6 +83,7 @@ const AuthenticatedApp = () => {
         <Route path="/messages" element={<Messages />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/account/notifications" element={<AccountNotifications />} />
+        <Route path="/account/orders" element={<MyOrders />} />
       </Route>
 
       {/* Admin */}

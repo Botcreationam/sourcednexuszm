@@ -38,7 +38,7 @@ export default function ProductDetail() {
 
   const {
     addToCart,
-    removeFromCart,
+    removeProductVariant,
     isInCart,
     toggleWishlist,
     isInWishlist,
@@ -183,7 +183,8 @@ export default function ProductDetail() {
   const status = hasGrades && selectedGrade ? selectedGrade.stock_status.toLowerCase().replace(/ /g, "_") : (product.status || "available");
   
   const exactSelectedImage = images[activeImg] || (images.length > 0 ? images[0] : null);
-  const inCart = isInCart(product.id);
+  const selectedVariant = { size: selectedSize || null, color: selectedColor || null, gradeName: selectedGrade?.name || null };
+  const inCart = isInCart(product.id, selectedVariant);
   const inWishlist = isInWishlist(product.id);
 
   const calculateDiscount = (price, original) => {
@@ -227,7 +228,7 @@ export default function ProductDetail() {
   };
 
   const handleRemoveFromCart = () => {
-    removeFromCart(product.id);
+    removeProductVariant(product.id, selectedVariant);
     toast({
       title: "Removed from Cart",
       description: `${product.name} removed from your inquiry cart.`,

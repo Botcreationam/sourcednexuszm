@@ -20,6 +20,8 @@ import {
 } from './lib/payza-shared.mjs';
 import { authorizeProcessor, processNotificationQueue } from './lib/product-notifications.mjs';
 import { processAnnouncements, sendAnnouncementTest } from './lib/announcements.mjs';
+import { handleShopRequest } from './lib/shop-api.mjs';
+import { confirmedOrderSummary } from './lib/order-receipts.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -582,6 +584,25 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // /api/shop/* - cart quote, My Orders, receipts, receipt-email retry worker.
+    // Shared with the Vercel mirror (api/shop.js) via lib/shop-api.mjs.
+    if (reqUrl.startsWith('/api/shop/')) {
+      (async () => {
+        try {
+          const u = new URL(rawUrl, 'http://x');
+          const query = Object.fromEntries(u.searchParams.entries());
+          const { status, body } = await handleShopRequest(req, reqUrl, query);
+          res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+          res.end(JSON.stringify(body));
+        } catch (err) {
+          console.error('[shop] error:', err?.message || err);
+          res.writeHead(500, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+          res.end(JSON.stringify({ success: false, error: 'Something went wrong. Please try again.' }));
+        }
+      })();
+      return;
+    }
+
     // GET /sitemap.xml - dynamic: static pages + all public products.
     if ((req.method === 'GET' || req.method === 'HEAD') && reqUrl === '/sitemap.xml') {
       renderSitemap().then((xml) => {
@@ -763,20 +784,21 @@ const server = http.createServer((req, res) => {
           json(502, { success: false, error: payzaResult.error });
           return;
         }
-        const applied = await applyPaymentResult(reference, payzaResult, { source: 'verify' });
+        const applied = await applyPaymentResult(reference, payzaResult, { source: 'verify', req });
         if (applied.error) {
           json(applied.code || 409, { success: false, error: applied.error });
           return;
         }
-        const orderRes = await supabaseRest('GET', 'orders', {
-          query: { select: 'order_number,status,payment_status', id: `eq.${own.data[0].order_id}`, limit: '1' },
-        });
-        const order = Array.isArray(orderRes.data) && orderRes.data[0] ? orderRes.data[0] : null;
+        const { order, receipt } = await confirmedOrderSummary(own.data[0].order_id);
         json(200, {
           success: true,
           paymentStatus: applied.status,
           orderStatus: order ? order.status : 'pending',
           orderNumber: order ? order.order_number : null,
+          // Confirmed figures from the stored order (never the live cart)
+          amountPaid: applied.status === 'paid' && order ? Number(order.subtotal) : null,
+          currency: order ? order.currency : 'ZMW',
+          receipt,
         });
         return;
       } catch (err) {
@@ -841,7 +863,7 @@ const server = http.createServer((req, res) => {
           // depth on top of the signature; also enforces amount + currency).
           const payzaResult = await verifyPayzaPayment(reference);
           if (!payzaResult.error) {
-            await applyPaymentResult(reference, payzaResult, { source: 'webhook' });
+            await applyPaymentResult(reference, payzaResult, { source: 'webhook', req });
           }
           // Events that verify could not confirm are left to the re-query /
           // verify path; we still acknowledge with 200.

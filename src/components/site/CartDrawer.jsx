@@ -4,6 +4,7 @@ import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, ShieldCheck, CreditCar
 import { useCart } from "@/lib/CartContext";
 import { formatKwachaPrice } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
+import { priceCart, priceLine, formatMoney } from "@/lib/cartPricing";
 
 export default function CartDrawer() {
   const {
@@ -44,6 +45,9 @@ export default function CartDrawer() {
 
   if (!isCartOpen) return null;
 
+  // One calculation: line = price x quantity, total = sum of payable lines.
+  const pricing = priceCart(cart);
+
   const handleStartInquiry = () => {
     closeCart();
     openInquiryModal(cart);
@@ -69,7 +73,7 @@ export default function CartDrawer() {
             <div className="flex items-center gap-2.5">
               <ShoppingBag className="w-5 h-5 text-[#C5A059]" />
               <div>
-                <h2 className="font-display text-lg tracking-wide uppercase">Inquiry Cart</h2>
+                <h2 className="font-display text-lg tracking-wide uppercase">Your Cart</h2>
                 <p className="text-[10px] tracking-wide-2 text-zinc-400 uppercase">
                   {cartCount} {cartCount === 1 ? "Item" : "Items"} Selected
                 </p>
@@ -92,7 +96,7 @@ export default function CartDrawer() {
                   <ShoppingBag className="w-8 h-8 stroke-[1.2]" />
                 </div>
                 <div>
-                  <p className="font-display text-xl text-white">Your Inquiry Cart is Empty</p>
+                  <p className="font-display text-xl text-white">Your Cart is Empty</p>
                   <p className="text-xs text-zinc-400 mt-1 max-w-[260px]">
                     Browse our curated collections and add pieces to request personalized quotes or pre-orders.
                   </p>
@@ -142,7 +146,7 @@ export default function CartDrawer() {
                             onClick={() => removeFromCart(item.itemKey)}
                             className="text-zinc-500 hover:text-red-400 p-0.5 transition-colors"
                             title="Remove from Cart"
-                            aria-label={`Remove ${item.name} from inquiry cart`}
+                            aria-label={`Remove ${item.name} from cart`}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -195,18 +199,38 @@ export default function CartDrawer() {
                           </button>
                         </div>
 
-                        <span className="flex items-center gap-1.5 text-xs font-light text-zinc-300">
-                          {item.gradeDiscount ? (
-                            <span className="text-[9px] uppercase font-semibold bg-red-500/15 text-red-400 border border-red-500/40 px-1 py-0.5">
-                              {String(item.gradeDiscount).includes("%") ? item.gradeDiscount : `${item.gradeDiscount}% OFF`}
-                            </span>
-                          ) : null}
-                          {item.gradeOriginalPrice ? (
-                            <span className="line-through decoration-zinc-600 text-zinc-500">
-                              {formatKwachaPrice(item.gradeOriginalPrice)}
-                            </span>
-                          ) : null}
-                          {formatKwachaPrice(item.price)}
+                        <span className="flex flex-col items-end gap-0.5 text-xs font-light text-zinc-300">
+                          {(() => {
+                            const line = priceLine(item);
+                            return line.payable ? (
+                              <>
+                                {(item.gradeDiscount || item.gradeOriginalPrice) ? (
+                                  <span className="flex items-center gap-1.5">
+                                    {item.gradeDiscount ? (
+                                      <span className="text-[9px] uppercase font-semibold bg-red-500/15 text-red-400 border border-red-500/40 px-1 py-0.5">
+                                        {String(item.gradeDiscount).includes("%") ? item.gradeDiscount : `${item.gradeDiscount}% OFF`}
+                                      </span>
+                                    ) : null}
+                                    {item.gradeOriginalPrice ? (
+                                      <span className="line-through decoration-zinc-600 text-zinc-500 text-[10px]">
+                                        {formatKwachaPrice(item.gradeOriginalPrice)}
+                                      </span>
+                                    ) : null}
+                                  </span>
+                                ) : null}
+                                <span className="text-[10px] text-zinc-500">
+                                  {formatMoney(line.unitPrice)} × {line.quantity}
+                                </span>
+                                <span className="text-sm font-medium text-white" data-testid="line-subtotal">
+                                  {formatMoney(line.subtotal)}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-[10px] uppercase tracking-wide text-zinc-500">
+                                {formatKwachaPrice(item.price)}
+                              </span>
+                            );
+                          })()}
                         </span>
                       </div>
                     </div>
@@ -230,13 +254,32 @@ export default function CartDrawer() {
           {/* Drawer Footer */}
           {cart.length > 0 && (
             <div className="p-6 border-t border-zinc-800 bg-zinc-900/60 space-y-3.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-400 uppercase tracking-wide-2">Pricing Model</span>
-                <span className="font-medium text-[#C5A059] uppercase tracking-wide-2">Price on Request</span>
-              </div>
+              {pricing.payableLines.length > 0 ? (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-zinc-400 uppercase tracking-wide-2">
+                      Order Total ({pricing.units} {pricing.units === 1 ? "item" : "items"})
+                    </span>
+                    <span className="font-display text-xl text-white" data-testid="order-total">
+                      {formatMoney(pricing.total)}
+                    </span>
+                  </div>
+                  {pricing.inquiryLines.length > 0 && (
+                    <p className="text-[10px] text-zinc-500 leading-normal">
+                      {pricing.inquiryLines.length} item{pricing.inquiryLines.length > 1 ? "s are" : " is"} priced on request
+                      and not included in this total. Send an inquiry for {pricing.inquiryLines.length > 1 ? "those" : "that one"}.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-zinc-400 uppercase tracking-wide-2">Pricing</span>
+                  <span className="font-medium text-[#C5A059] uppercase tracking-wide-2">Price on Request</span>
+                </div>
+              )}
 
               <p className="text-[10px] text-zinc-500 leading-normal">
-                Sourced Nexus operates on a bespoke concierge model. Submit your selections to receive confirmed Lusaka delivery quotes and timelines.
+                Pay online for items with a confirmed price, or send an inquiry to receive a confirmed Lusaka delivery quote and timeline.
               </p>
 
               <button
@@ -247,14 +290,16 @@ export default function CartDrawer() {
                 <ArrowRight className="w-4 h-4" />
               </button>
 
-              {/* Online payments via Payza */}
-              <button
-                onClick={handleGoToCheckout}
-                className="w-full border border-[#C5A059]/60 hover:border-[#C5A059] text-foreground py-3.5 px-4 text-xs tracking-wide-2 uppercase font-medium transition-colors flex items-center justify-center gap-2"
-              >
-                <CreditCard className="w-4 h-4 text-[#C5A059]" />
-                <span>Pay Online</span>
-              </button>
+              {/* Online payments via Payza (only for confirmed-price items) */}
+              {pricing.payableLines.length > 0 && (
+                <button
+                  onClick={handleGoToCheckout}
+                  className="w-full border border-[#C5A059]/60 hover:border-[#C5A059] text-foreground py-3.5 px-4 text-xs tracking-wide-2 uppercase font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  <CreditCard className="w-4 h-4 text-[#C5A059]" />
+                  <span>Checkout {formatMoney(pricing.total)}</span>
+                </button>
+              )}
 
               <div className="flex items-center justify-center gap-1.5 text-[10px] text-zinc-500">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#C5A059]" />

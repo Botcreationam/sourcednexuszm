@@ -22,11 +22,11 @@ const STATUS_LABELS = {
 export default function ProductCard({ product }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
-  const { addToCart, removeFromCart, isInCart, toggleWishlist, isInWishlist } = useCart();
+  const { addToCart, removeProductVariant, isInCart, toggleWishlist, isInWishlist } = useCart();
 
   const img = product.images?.[0];
   const status = product.status || "available";
-  const inCart = isInCart(product.id);
+  const inCart = isInCart(product.id, {});
   const inWishlist = isInWishlist(product.id);
 
   const handleWishlistToggle = (e) => {
@@ -45,7 +45,7 @@ export default function ProductCard({ product }) {
     e.preventDefault();
     e.stopPropagation();
     if (inCart) {
-      removeFromCart(product.id);
+      removeProductVariant(product.id, {});
       toast({
         title: "Removed from Cart",
         description: `${product.name} removed from your inquiry selections.`,

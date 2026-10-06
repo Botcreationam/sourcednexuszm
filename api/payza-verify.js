@@ -10,6 +10,7 @@ import {
   referenceIsValid,
   supabaseRest,
 } from '../lib/payza-shared.mjs';
+import { confirmedOrderSummary } from '../lib/order-receipts.mjs';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -38,19 +39,20 @@ export default async function handler(req, res) {
     if (payzaResult.error) {
       return res.status(502).json({ success: false, error: payzaResult.error });
     }
-    const applied = await applyPaymentResult(reference, payzaResult, { source: 'verify' });
+    const applied = await applyPaymentResult(reference, payzaResult, { source: 'verify', req });
     if (applied.error) {
       return res.status(applied.code || 409).json({ success: false, error: applied.error });
     }
-    const orderRes = await supabaseRest('GET', 'orders', {
-      query: { select: 'order_number,status,payment_status', id: `eq.${own.data[0].order_id}`, limit: '1' },
-    });
-    const order = Array.isArray(orderRes.data) && orderRes.data[0] ? orderRes.data[0] : null;
+    const { order, receipt } = await confirmedOrderSummary(own.data[0].order_id);
     return res.status(200).json({
       success: true,
       paymentStatus: applied.status,
       orderStatus: order ? order.status : 'pending',
       orderNumber: order ? order.order_number : null,
+      // Confirmed figures from the stored order (never the live cart)
+      amountPaid: applied.status === 'paid' && order ? Number(order.subtotal) : null,
+      currency: order ? order.currency : 'ZMW',
+      receipt,
     });
   } catch (err) {
     console.error('[payza] verify error:', err.message);

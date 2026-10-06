@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { Menu, X, LogOut, Sliders, Heart, ShoppingBag, MessageSquare, Home, Bell, Store, Search } from "lucide-react";
+import { Menu, X, LogOut, Sliders, Heart, ShoppingBag, MessageSquare, Home, Bell, Store, Search, ReceiptText } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -339,6 +339,15 @@ export default function Navbar() {
                   </span>
                   <button
                     type="button"
+                    onClick={() => handleNav("/account/orders")}
+                    title="My Orders"
+                    aria-label="My Orders"
+                    className="text-muted-foreground hover:text-foreground p-1 transition-colors"
+                  >
+                    <ReceiptText className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setPreferencesOpen(true)}
                     title="Preferences & Interests"
                     className="text-muted-foreground hover:text-foreground p-1 transition-colors"
@@ -476,6 +485,12 @@ export default function Navbar() {
             ))}
             {isAuthenticated && (
               <>
+                <button
+                  onClick={() => handleNav("/account/orders")}
+                  className="text-left py-3 text-sm tracking-wide-2 uppercase border-b border-border/60"
+                >
+                  My Orders
+                </button>
                 <button
                   onClick={() => { setOpen(false); setNotificationsOpen(true); }}
                   className="text-left py-3 text-sm tracking-wide-2 uppercase border-b border-border/60 flex items-center justify-between text-[#C5A059]"

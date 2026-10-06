@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Navigate, useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import { formatKwachaPrice } from "@/lib/utils";
+import { priceCart, priceLine, formatMoney, toServerLines, authedFetch, fetchServerQuote } from "@/lib/cartPricing";
 import {
   ShoppingBag,
   CreditCard,
@@ -14,6 +15,9 @@ import {
   Loader2,
   ArrowLeft,
   Info,
+  Mail,
+  ReceiptText,
+  RefreshCw,
 } from "lucide-react";
 
 // Online payments via Payza (Airtel Money, MTN, Zamtel). The backend keys are
@@ -33,7 +37,7 @@ const UI_STATE = {
 
 export default function Checkout() {
   const { user, isAuthenticated } = useAuth();
-  const { cart, removeFromCart } = useCart();
+  const { cart, removeFromCart, updateCartItemPrice } = useCart();
   const navigate = useNavigate();
 
   const [uiState, setUiState] = useState(UI_STATE.FORM);
@@ -83,46 +87,61 @@ export default function Checkout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Only items with a single confirmed numeric price can be paid online.
-  // A price RANGE (e.g. "K5,500 - K6,700") or genuine "Price on Request" is
-  // never collapsed into a guessed number — both stay in the inquiry flow,
-  // but we track them separately so the notice banner is accurate about
-  // which kind of item is holding back the total.
-  const isConfirmedNumeric = (price) =>
-    typeof price === "number" ||
-    /^\s*[Kk]?\s*[\d,]+(\.\d{1,2})?\s*$/.test(String(price || ""));
-
-  const payableItems = cart.filter((item) => isConfirmedNumeric(item.price));
-  const inquiryOnlyItems = cart.filter((item) => !isConfirmedNumeric(item.price));
+  // ONE calculation shared with the cart drawer (src/lib/cartPricing.js):
+  //   line = unit price x quantity, total = sum of payable lines.
+  // Items without one confirmed numeric price (price on request, ranges,
+  // bundles like "K600 for 6") stay in the inquiry flow and are never guessed.
+  const pricing = useMemo(() => priceCart(cart), [cart]);
+  const payableItems = pricing.payableLines.map((l) => l.item);
+  const inquiryOnlyItems = pricing.inquiryLines.map((l) => l.item);
   const rangeItems = inquiryOnlyItems.filter((item) => /\d\s*[-–]\s*[Kk]?\s*\d/.test(String(item.price || "")));
   const requestOnlyItems = inquiryOnlyItems.filter((item) => !rangeItems.includes(item));
+  const getItemSubtotal = (item) => priceLine(item).subtotal ?? 0;
+  const isConfirmedNumeric = (price) => priceLine({ price, quantity: 1 }).payable;
+  const displayTotal = pricing.total;
 
-  // Each line's own subtotal (price × quantity), only meaningful for
-  // confirmed numeric items. A missing/invalid quantity on a legacy cart
-  // record defaults to 1 instead of poisoning the whole sum with NaN.
-  const getItemSubtotal = (item) => {
-    const clean = String(item.price).replace(/[Kk,\s]/g, "");
-    const n = Number(clean);
-    const qty = Number.isFinite(Number(item.quantity)) && Number(item.quantity) > 0 ? Number(item.quantity) : 1;
-    return Number.isFinite(n) ? n * qty : 0;
-  };
-
-  const displayTotal = payableItems.reduce((sum, item) => sum + getItemSubtotal(item), 0);
-
-  const postJson = async (path, body) => {
-    const { data } = await (await import("@/lib/supabase")).supabase.auth.getSession();
-    const token = data?.session?.access_token;
-    const res = await fetch(path, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(body),
+  // The SERVER's own quote for the same lines. The amount actually charged is
+  // always computed on the server from the live catalog; this just lets the
+  // customer see that figure BEFORE paying and stops a surprise.
+  const [quote, setQuote] = useState({ state: "idle", total: null, lines: [] });
+  const quoteKey = JSON.stringify(toServerLines(pricing.payableLines));
+  useEffect(() => {
+    if (!isAuthenticated || pricing.payableLines.length === 0) {
+      setQuote({ state: "idle", total: null, lines: [] });
+      return undefined;
+    }
+    let cancelled = false;
+    setQuote((q) => ({ ...q, state: "loading" }));
+    fetchServerQuote(pricing.payableLines).then((r) => {
+      if (cancelled) return;
+      if (!r.ok) setQuote({ state: "error", total: null, lines: [], error: r.error });
+      else setQuote({ state: "ready", total: r.total, lines: r.lines });
     });
-    const payload = await res.json().catch(() => ({}));
-    return { ok: res.ok, status: res.status, payload };
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quoteKey, isAuthenticated]);
+
+  // Server and screen disagree (a price changed since the item was added)
+  const priceChanged = quote.state === "ready" && Math.abs(quote.total - displayTotal) > 0.009;
+  // A line the server can no longer sell online (removed, hidden, grade gone)
+  const unavailableLines = quote.state === "ready" ? quote.lines.filter((l) => !l.payable) : [];
+  const serverUnitPrice = (item) => {
+    if (quote.state !== "ready") return null;
+    const key = `${item.id}|${item.selectedSize || ""}|${item.selectedColor || ""}|${item.gradeName || item.selectedGrade?.name || ""}`;
+    const l = quote.lines.find((x) => `${x.productId}|${x.size || ""}|${x.color || ""}|${x.gradeName || ""}` === key);
+    return l && l.payable ? l.unitPrice : null;
   };
+  const confirmedTotal = quote.state === "ready" ? quote.total : displayTotal;
+
+  // Accept the new prices: update the cart's stored prices to the server's
+  const acceptNewPrices = () => {
+    for (const item of payableItems) {
+      const p = serverUnitPrice(item);
+      if (p != null && p !== priceLine(item).unitPrice) updateCartItemPrice(item.itemKey, p);
+    }
+  };
+
+  const postJson = (path, body) => authedFetch(path, { method: "POST", body: JSON.stringify(body) });
 
   const handlePayWithPayza = async () => {
     setError(null);
@@ -132,6 +151,18 @@ export default function Checkout() {
     }
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError("Please enter a valid email address for your payment receipt.");
+      return;
+    }
+    if (quote.state !== "ready") {
+      setError("We are still confirming your prices. Please try again in a moment.");
+      return;
+    }
+    if (unavailableLines.length > 0) {
+      setError("One or more items can no longer be paid for online. Please remove them from your cart and try again.");
+      return;
+    }
+    if (priceChanged) {
+      setError("The price of one or more items has changed. Please review your order before continuing to payment.");
       return;
     }
     setUiState(UI_STATE.PAYING);
@@ -155,7 +186,7 @@ export default function Checkout() {
         return;
       }
 
-      setOrderInfo({ orderNumber: payload.orderNumber, reference: payload.reference });
+      setOrderInfo({ orderNumber: payload.orderNumber, reference: payload.reference, amount: payload.amount });
       // Keep the reference for the post-redirect return trip
       try {
         sessionStorage.setItem("sn_payza_ref", JSON.stringify({ reference: payload.reference, orderNumber: payload.orderNumber }));
@@ -184,6 +215,16 @@ export default function Checkout() {
           return;
         }
         if (payload.paymentStatus === "paid") {
+          // Everything on the success page comes from the server's confirmed
+          // order, never from the live cart (which may change afterwards).
+          setOrderInfo((prev) => ({
+            ...(prev || {}),
+            orderNumber: payload.orderNumber || prev?.orderNumber,
+            reference: reference,
+            amount: payload.amountPaid,
+            currency: payload.currency || "ZMW",
+            receipt: payload.receipt || null,
+          }));
           setUiState(UI_STATE.SUCCESS);
         } else if (payload.paymentStatus === "confirmation_pending") {
           setUiState(UI_STATE.PENDING);
@@ -256,33 +297,74 @@ export default function Checkout() {
         </button>
       </div>
 
-      {(uiState === UI_STATE.SUCCESS || uiState === UI_STATE.PENDING || uiState === UI_STATE.FAILED || uiState === UI_STATE.CLOSED) && (
+      {uiState === UI_STATE.SUCCESS && (
+        <div className="max-w-xl mx-auto text-center py-10 px-6 border border-border bg-card" data-testid="payment-success">
+          <div className="mx-auto w-16 h-16 rounded-full border border-[#C5A059]/60 flex items-center justify-center mb-5">
+            <CheckCircle2 className="w-8 h-8 text-[#C5A059]" />
+          </div>
+          <h2 className="font-display text-2xl tracking-wide uppercase mb-1">Payment Successful</h2>
+          <p className="text-sm text-muted-foreground mb-6">Thank you for your purchase.</p>
+
+          <dl className="text-left text-sm border-t border-border divide-y divide-border mb-6">
+            <div className="flex justify-between gap-4 py-3">
+              <dt className="text-muted-foreground">Order #</dt>
+              <dd className="font-medium">{orderInfo?.orderNumber || "-"}</dd>
+            </div>
+            <div className="flex justify-between gap-4 py-3">
+              <dt className="text-muted-foreground">Amount paid</dt>
+              <dd className="font-display text-lg">{orderInfo?.amount != null ? formatMoney(orderInfo.amount) : "-"}</dd>
+            </div>
+            <div className="flex justify-between gap-4 py-3">
+              <dt className="text-muted-foreground">Payment reference</dt>
+              <dd className="font-medium break-all text-right">{orderInfo?.reference || "-"}</dd>
+            </div>
+            <div className="flex justify-between gap-4 py-3">
+              <dt className="text-muted-foreground">Receipt</dt>
+              <dd className="text-right">
+                {/* Only claim the email went out if the server says it did. */}
+                {orderInfo?.receipt?.emailStatus === "sent" ? (
+                  <span className="inline-flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 text-[#C5A059]" /> Sent to {orderInfo.receipt.email}</span>
+                ) : orderInfo?.receipt ? (
+                  <span className="text-muted-foreground">Email on its way. Your receipt is saved in My Orders.</span>
+                ) : (
+                  <span className="text-muted-foreground">Being prepared. It will appear in My Orders.</span>
+                )}
+              </dd>
+            </div>
+          </dl>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link to="/account/orders" className="inline-flex items-center gap-2 px-6 py-3 text-[11px] tracking-wide-2 uppercase bg-[#C5A059] text-black hover:bg-[#b8914f] transition-colors">
+              <ReceiptText className="w-4 h-4" /> View Order
+            </Link>
+            <Link to="/catalog" className="inline-flex items-center gap-2 px-6 py-3 text-[11px] tracking-wide-2 uppercase border border-foreground hover:bg-foreground hover:text-background transition-colors">
+              Continue Shopping
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {(uiState === UI_STATE.PENDING || uiState === UI_STATE.FAILED || uiState === UI_STATE.CLOSED) && (
         <StatusPanel
           icon={
-            uiState === UI_STATE.SUCCESS ? (
-              <CheckCircle2 className="w-8 h-8 text-[#C5A059]" />
-            ) : uiState === UI_STATE.PENDING ? (
+            uiState === UI_STATE.PENDING ? (
               <Clock className="w-8 h-8 text-muted-foreground" />
             ) : (
               <XCircle className="w-8 h-8 text-muted-foreground" />
             )
           }
           title={
-            uiState === UI_STATE.SUCCESS
-              ? "Payment Successful"
-              : uiState === UI_STATE.PENDING
+            uiState === UI_STATE.PENDING
               ? "Awaiting Confirmation"
               : uiState === UI_STATE.FAILED
               ? "Payment Failed"
               : "Payment Cancelled"
           }
           message={
-            uiState === UI_STATE.SUCCESS
-              ? `Order ${orderInfo?.orderNumber || ""} is confirmed. We have emailed your reference ${orderInfo?.reference || ""}. Your purchased items have been cleared from your cart.`
-              : uiState === UI_STATE.PENDING
-              ? "Your payment is being confirmed by the provider. You can check its status below at any time."
+            uiState === UI_STATE.PENDING
+              ? "Your payment is being confirmed by the provider. You can check its status below at any time. No receipt is sent until the payment is confirmed."
               : uiState === UI_STATE.FAILED
-              ? error || "The payment did not go through. You can safely retry below."
+              ? error || "The payment did not go through and you have not been charged for this order. You can safely retry below."
               : "You cancelled the payment before completing it. Your cart is untouched."
           }
         >
@@ -302,11 +384,6 @@ export default function Checkout() {
               >
                 <CreditCard className="w-4 h-4" /> Retry Payment
               </button>
-            )}
-            {uiState === UI_STATE.SUCCESS && (
-              <Link to="/catalog" className="inline-flex items-center gap-2 px-6 py-3 text-[11px] tracking-wide-2 uppercase border border-foreground hover:bg-foreground hover:text-background transition-colors">
-                Continue Shopping
-              </Link>
             )}
           </div>
         </StatusPanel>
@@ -332,12 +409,22 @@ export default function Checkout() {
                       {item.selectedSize ? ` • Size ${item.selectedSize}` : ""}
                       {item.selectedColor ? ` • ${item.selectedColor}` : ""}
                     </p>
-                    <p className="text-sm mt-1">
-                      {formatKwachaPrice(item.price)} × {item.quantity}
-                      {isConfirmedNumeric(item.price) && (
-                        <span className="text-muted-foreground"> = {formatKwachaPrice(getItemSubtotal(item))}</span>
+                    <p className="text-sm mt-1" data-testid="summary-line">
+                      {isConfirmedNumeric(item.price) ? (
+                        <>
+                          {formatMoney(priceLine(item).unitPrice)} × {priceLine(item).quantity}
+                          <span className="text-muted-foreground"> = </span>
+                          <span className="font-medium">{formatMoney(getItemSubtotal(item))}</span>
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">{formatKwachaPrice(item.price)} × {item.quantity}</span>
                       )}
                     </p>
+                    {isConfirmedNumeric(item.price) && serverUnitPrice(item) != null && serverUnitPrice(item) !== priceLine(item).unitPrice && (
+                      <p className="text-[11px] mt-1 text-[#C5A059]">
+                        Price is now {formatMoney(serverUnitPrice(item))} each
+                      </p>
+                    )}
                   </div>
                 </div>
               ))}
@@ -362,10 +449,37 @@ export default function Checkout() {
                 </p>
               </div>
             )}
+            {priceChanged && (
+              <div className="mt-4 border border-[#C5A059]/60 bg-[#C5A059]/10 p-3 flex gap-3 items-start" role="alert">
+                <AlertCircle className="w-4 h-4 text-[#C5A059] flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p>The price of one or more items has changed. Please review your order before continuing to payment.</p>
+                  <button onClick={acceptNewPrices} className="mt-2 inline-flex items-center gap-1.5 text-[11px] tracking-wide-2 uppercase border-b border-foreground pb-0.5">
+                    <RefreshCw className="w-3 h-3" /> Update to current prices ({formatMoney(quote.total)})
+                  </button>
+                </div>
+              </div>
+            )}
+            {unavailableLines.length > 0 && (
+              <div className="mt-4 border border-border bg-muted/30 p-3 flex gap-3 items-start" role="alert">
+                <AlertCircle className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-muted-foreground">
+                  {unavailableLines.length} item{unavailableLines.length > 1 ? "s" : ""} in your cart can no longer be paid for online.
+                  Remove {unavailableLines.length > 1 ? "them" : "it"} to continue.
+                </p>
+              </div>
+            )}
             <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
-              <span className="text-[11px] tracking-wide-2 uppercase text-muted-foreground">Order Total</span>
-              <span className="font-display text-2xl">{formatKwachaPrice(displayTotal)}</span>
+              <span className="text-[11px] tracking-wide-2 uppercase text-muted-foreground">
+                Order Total ({pricing.units} {pricing.units === 1 ? "item" : "items"})
+              </span>
+              <span className="font-display text-2xl" data-testid="checkout-total">{formatMoney(confirmedTotal)}</span>
             </div>
+            <p className="mt-1 text-[10px] tracking-wide-2 uppercase text-muted-foreground flex items-center gap-1.5">
+              {quote.state === "loading" && (<><Loader2 className="w-3 h-3 animate-spin" /> Confirming prices</>)}
+              {quote.state === "ready" && !priceChanged && "Prices confirmed. This is the amount you will pay."}
+              {quote.state === "error" && "Could not confirm prices right now."}
+            </p>
             {inquiryOnlyItems.length > 0 && (
               <p className="mt-2 text-[10px] tracking-wide-2 uppercase text-muted-foreground">
                 Final amount is confirmed once the price-on-request items above are settled
@@ -431,10 +545,10 @@ export default function Checkout() {
               <>
                 <button
                   onClick={handlePayWithPayza}
-                  disabled={payableItems.length === 0}
+                  disabled={payableItems.length === 0 || quote.state !== "ready" || priceChanged || unavailableLines.length > 0}
                   className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 text-[12px] tracking-wide-2 uppercase bg-[#C5A059] text-black hover:bg-[#b8914f] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
-                  <CreditCard className="w-4 h-4" /> Pay with Payza
+                  <CreditCard className="w-4 h-4" /> Pay {formatMoney(confirmedTotal)} with Payza
                 </button>
                 <p className="mt-3 flex items-center gap-2 text-[10px] tracking-wide-2 uppercase text-muted-foreground">
                   <Lock className="w-3.5 h-3.5" /> Airtel Money, MTN & Zamtel • Secured by Payza
