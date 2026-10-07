@@ -3,6 +3,7 @@ import { X, Heart, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
 import { useCart } from "@/lib/CartContext";
 import { formatKwachaPrice } from "@/lib/utils";
 import { productPath } from "@/lib/productUrl";
+import { toast } from "@/components/ui/use-toast";
 
 export default function WishlistDrawer() {
   const {
@@ -19,7 +20,13 @@ export default function WishlistDrawer() {
   if (!isWishlistOpen) return null;
 
   const handleMoveToCart = (product) => {
-    addToCart(product, { quantity: 1, openDrawer: false });
+    const r = addToCart(product, { quantity: 1, openDrawer: false });
+    if (r?.needsSize) {
+      toast({
+        title: "Choose your size first",
+        description: `Open ${product.name} to select a size and view the size guide.`,
+      });
+    }
   };
 
   return (
@@ -148,7 +155,13 @@ export default function WishlistDrawer() {
                   <button
                     onClick={() => {
                       // Add all to cart
-                      wishlist.forEach((p) => addToCart(p, { quantity: 1, openDrawer: false }));
+                      const skipped = wishlist.filter((p) => addToCart(p, { quantity: 1, openDrawer: false })?.needsSize);
+                      if (skipped.length > 0) {
+                        toast({
+                          title: `${skipped.length} item${skipped.length > 1 ? "s" : ""} need a size`,
+                          description: "Open each garment to choose a size and view the size guide.",
+                        });
+                      }
                       closeWishlist();
                       openCart();
                     }}

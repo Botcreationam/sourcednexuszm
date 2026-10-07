@@ -1,0 +1,35 @@
+import { createRequire } from 'node:module';
+const puppeteer = createRequire('/tmp/univo-headless/')('puppeteer');
+const ids = JSON.parse((await import('node:fs')).readFileSync('/tmp/uitest/ids.json','utf8'));
+const B='http://localhost:4660';
+const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox'] });
+const page = await browser.newPage();
+await page.setViewport({ width: 390, height: 844 });
+await page.evaluateOnNewDocument(()=>localStorage.setItem('sn_onboarding_dismissed','true'));
+const errs=[]; page.on('pageerror', e=>errs.push('PAGEERR '+e.message)); page.on('console', m=>{ if(m.type()==='error') errs.push('CONSOLE '+m.text().slice(0,160)); });
+let pass=0, fail=0; const ok=(c,n)=>{ c?pass++:fail++; console.log((c?'PASS ':'FAIL ')+n); };
+const txt = ()=>page.evaluate(()=>document.body.innerText);
+await page.goto(B+'/bundles',{waitUntil:'networkidle0'});
+let t=await txt();
+ok(t.includes('Gentleman Starter Bundle'),'bundles list shows the bundle');
+ok(/K2,?900/.test(t),'list shows bundle price K2,900');
+ok(/save k/i.test(t),'list shows a savings badge');
+ok(/unavailable/i.test(t),'sold-out-part bundle flagged Unavailable');
+await page.screenshot({path:'/tmp/uitest/s1-list.png'});
+
+await page.goto(B+'/bundles/'+ids.gent,{waitUntil:'networkidle0'});
+t=await txt();
+ok(/what is included/i.test(t) && t.includes('Black Three-Piece Suit') && t.includes('Brogue Oxford Shoes'),'detail lists all components');
+ok(t.includes('Desk Lamp'),'detail lists non-clothing component');
+const sizeLabels=(t.match(/Size Guide/gi)||[]).length;
+ok(sizeLabels>=3,'size guide link for each of the 3 garment/shoe components (got '+sizeLabels+')');
+ok(/SIZE SELECTION/i.test(t),'size notice present');
+// add without sizes -> blocked
+await page.evaluate(()=>document.querySelector('[data-testid="add-bundle"]').scrollIntoView({block:'center'})); await page.click('[data-testid="add-bundle"]'); await new Promise(r=>setTimeout(r,500));
+t=await txt();
+ok(/Select your sizes first/i.test(t),'adding without sizes is blocked with a message');
+const cartBefore = await page.evaluate(()=>localStorage.getItem('cart')||localStorage.getItem('sn_cart')||'');
+await page.screenshot({path:'/tmp/uitest/s2-detail.png'});
+console.log('ERRORS:',errs.slice(0,6));
+console.log(`RESULT ${pass} passed ${fail} failed`);
+await browser.close();

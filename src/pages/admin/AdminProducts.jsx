@@ -46,6 +46,11 @@ export default function AdminProducts() {
   // Deliberate opt-in for product emails. Always starts OFF for each save.
   const [notifyUsers, setNotifyUsers] = useState(false);
   const [eligibleCount, setEligibleCount] = useState(null);
+  // Size settings live outside `form` on purpose: they are only written to the
+  // database when the admin sets them, so saving a product keeps working even
+  // before the size migration has been applied.
+  const emptySize = { sizing_standard: "", size_guide_type: "", requires_size_verification: "" };
+  const [sizeCfg, setSizeCfg] = useState(emptySize);
 
   const load = async () => {
     setLoading(true);
@@ -79,6 +84,7 @@ export default function AdminProducts() {
   const openAdd = () => {
     setEditing(null);
     setForm({ ...emptyForm, category: catOptions.length > 0 ? catOptions[0] : "" });
+    setSizeCfg(emptySize);
     setImages([]);
     setNotifyUsers(false); // never inherited from a previous save
     loadEligibleCount();
@@ -99,6 +105,11 @@ export default function AdminProducts() {
         const existing = p.grades?.find(g => g.name === def.name);
         return existing || def;
       }),
+    });
+    setSizeCfg({
+      sizing_standard: p.sizing_standard || "",
+      size_guide_type: p.size_guide_type || "",
+      requires_size_verification: p.requires_size_verification === true ? "yes" : p.requires_size_verification === false ? "no" : "",
     });
     setImages(p.images || []);
     setNotifyUsers(false); // never inherited from a previous save
@@ -243,6 +254,13 @@ export default function AdminProducts() {
       images,
       grades: form.grades.filter(g => g.price && String(g.price).trim() !== ""),
     };
+    // Size settings: sent only when set (or when clearing a previously saved value).
+    const hadSize = editing && (editing.sizing_standard || editing.size_guide_type || editing.requires_size_verification != null);
+    if (sizeCfg.sizing_standard.trim() || sizeCfg.size_guide_type || sizeCfg.requires_size_verification || hadSize) {
+      payload.sizing_standard = sizeCfg.sizing_standard.trim() || null;
+      payload.size_guide_type = sizeCfg.size_guide_type || null;
+      payload.requires_size_verification = sizeCfg.requires_size_verification === "yes" ? true : sizeCfg.requires_size_verification === "no" ? false : null;
+    }
     const wantedNotify = Boolean(notifyUsers) && isSupabaseConfigured;
     // One-shot flag read by the database trigger (which resets it to false, so it
     // is never sticky). It is only sent when the admin ticks the box, so ordinary
@@ -478,6 +496,36 @@ export default function AdminProducts() {
                 <In label="Sizes (comma separated)"><input value={form.sizes} onChange={(e) => update("sizes", e.target.value)} placeholder="S, M, L" className={inp} /></In>
                 <In label="Colors (comma separated)"><input value={form.colors} onChange={(e) => update("colors", e.target.value)} placeholder="Black, Red" className={inp} /></In>
               </div>
+              {form.sizes.trim() && (
+                <div className="border border-border p-3 space-y-3" data-testid="size-settings">
+                  <p className="text-[10px] tracking-wide-2 uppercase text-muted-foreground">Size verification (clothing)</p>
+                  <p className="text-xs text-muted-foreground">
+                    Clothing categories ask the customer to confirm their size at checkout automatically. Use these only to override that.
+                  </p>
+                  <div className="grid sm:grid-cols-3 gap-3">
+                    <In label="Sizing system">
+                      <input value={sizeCfg.sizing_standard} onChange={(e) => setSizeCfg((c) => ({ ...c, sizing_standard: e.target.value }))} placeholder="Global / International" className={inp} />
+                    </In>
+                    <In label="Size guide">
+                      <select value={sizeCfg.size_guide_type} onChange={(e) => setSizeCfg((c) => ({ ...c, size_guide_type: e.target.value }))} className={inp}>
+                        <option value="">Automatic (from category)</option>
+                        <option value="suits">Suits and jackets</option>
+                        <option value="tops_dresses">Tops, shirts and dresses</option>
+                        <option value="bottoms">Trousers and skirts</option>
+                        <option value="shoes">Shoes</option>
+                        <option value="none">No size guide</option>
+                      </select>
+                    </In>
+                    <In label="Ask customer to confirm size">
+                      <select value={sizeCfg.requires_size_verification} onChange={(e) => setSizeCfg((c) => ({ ...c, requires_size_verification: e.target.value }))} className={inp}>
+                        <option value="">Automatic (from category)</option>
+                        <option value="yes">Always</option>
+                        <option value="no">Never</option>
+                      </select>
+                    </In>
+                  </div>
+                </div>
+              )}
               <In label="Delivery Info"><input value={form.delivery_info} onChange={(e) => update("delivery_info", e.target.value)} className={inp} /></In>
               <In label="Description"><textarea value={form.description} onChange={(e) => update("description", e.target.value)} rows={4} className={inp} /></In>
 

@@ -64,15 +64,34 @@ export function formatMoney(amount) {
   })}`;
 }
 
-/** Only identity goes to the server: never a price. */
-export function toServerLines(lines) {
-  return lines.map(({ item, quantity }) => ({
-    productId: item.id,
-    quantity,
-    size: item.selectedSize || null,
-    color: item.selectedColor || null,
-    gradeName: item.gradeName || item.selectedGrade?.name || null,
-  }));
+/**
+ * Only identity goes to the server: never a price.
+ * `sizeVerified` is the customer's explicit checkbox confirmation at checkout.
+ * It is sent so the server can record it, but the SERVER decides whether a
+ * product needs it and rejects the order if it is missing.
+ */
+export function toServerLines(lines, { sizeVerified = false } = {}) {
+  return lines.map(({ item, quantity }) => {
+    if (item.isBundle) {
+      return {
+        bundleId: item.bundleId || item.id,
+        quantity,
+        componentSelections: (item.bundleComponents || []).map((c) => ({
+          productId: c.productId,
+          size: c.size || null,
+          sizeVerified,
+        })),
+      };
+    }
+    return {
+      productId: item.id,
+      quantity,
+      size: item.selectedSize || null,
+      color: item.selectedColor || null,
+      gradeName: item.gradeName || item.selectedGrade?.name || null,
+      sizeVerified,
+    };
+  });
 }
 
 export async function authedFetch(path, options = {}) {

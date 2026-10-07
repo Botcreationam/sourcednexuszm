@@ -137,7 +137,7 @@ export default function CartDrawer() {
                       <div>
                         <div className="flex items-start justify-between gap-2">
                           <Link
-                            to={productPath({ id: item.id, name: item.name })}
+                            to={item.isBundle ? `/bundles/${item.bundleId || item.id}` : productPath({ id: item.id, name: item.name })}
                             onClick={closeCart}
                             className="font-display text-sm text-white hover:text-[#C5A059] transition-colors line-clamp-1"
                           >
@@ -154,8 +154,18 @@ export default function CartDrawer() {
                         </div>
 
                         <p className="text-[10px] tracking-wide-2 uppercase text-zinc-400 mt-0.5">
-                          {item.category}
+                          {item.isBundle ? "Bundle" : item.category}
                         </p>
+
+                        {item.isBundle && (item.bundleComponents || []).length > 0 && (
+                          <ul className="mt-1.5 space-y-0.5 text-[10px] text-zinc-400" data-testid="drawer-bundle-contents">
+                            {item.bundleComponents.map((c) => (
+                              <li key={c.productId} className="truncate">
+                                {c.quantity} × {c.name}{c.size ? ` · ${c.size}` : ""}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
 
                         <div className="flex flex-wrap gap-1.5 mt-1.5">
                           {item.selectedSize && (

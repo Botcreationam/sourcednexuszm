@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Heart, ShoppingBag, Check, ImageOff } from "lucide-react";
 import { buildWhatsAppUrl, productInquiryMessage } from "@/lib/whatsapp";
 import { formatKwachaPrice } from "@/lib/utils";
@@ -7,6 +7,7 @@ import { recordProductView } from "@/lib/recommendations";
 import { useCart } from "@/lib/CartContext";
 import { toast } from "@/components/ui/use-toast";
 import { productPath } from "@/lib/productUrl";
+import { requiresSizeVerification } from "@/lib/sizePolicy";
 
 const STATUS_STYLES = {
   available: "bg-foreground text-background",
@@ -24,6 +25,7 @@ export default function ProductCard({ product }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   const { addToCart, removeProductVariant, isInCart, toggleWishlist, isInWishlist } = useCart();
+  const navigate = useNavigate();
 
   const img = product.images?.[0];
   const status = product.status || "available";
@@ -51,6 +53,13 @@ export default function ProductCard({ product }) {
         title: "Removed from Cart",
         description: `${product.name} removed from your inquiry selections.`,
       });
+    } else if (requiresSizeVerification(product)) {
+      // Garments need a size the customer picks themselves (with the size guide).
+      toast({
+        title: "Choose your size first",
+        description: "Open the product to select a size and view the size guide.",
+      });
+      navigate(productPath(product));
     } else {
       addToCart(product, {
         quantity: 1,

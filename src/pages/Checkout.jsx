@@ -4,6 +4,8 @@ import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import { formatKwachaPrice } from "@/lib/utils";
 import { buildWhatsAppUrl, paidOrderWhatsAppMessage } from "@/lib/whatsapp";
+import SizeNotice from "@/components/site/SizeNotice";
+import { SIZE_CHECKBOX_LABEL } from "@/lib/sizePolicy";
 import { priceCart, priceLine, formatMoney, toServerLines, authedFetch, fetchServerQuote } from "@/lib/cartPricing";
 import {
   ShoppingBag,
@@ -20,6 +22,8 @@ import {
   ReceiptText,
   RefreshCw,
   MessageCircle,
+  Package,
+  Ruler,
 } from "lucide-react";
 
 // Online payments via Payza (Airtel Money, MTN, Zamtel). The backend keys are
@@ -49,6 +53,9 @@ export default function Checkout() {
   const [phone, setPhone] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  // Mandatory size confirmation. Required for any garment line (product or
+  // bundle component) the server says needs it. Starts unchecked every visit.
+  const [sizeConfirmed, setSizeConfirmed] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
@@ -129,10 +136,37 @@ export default function Checkout() {
   const unavailableLines = quote.state === "ready" ? quote.lines.filter((l) => !l.payable) : [];
   const serverUnitPrice = (item) => {
     if (quote.state !== "ready") return null;
+    if (item.isBundle) {
+      const b = quote.lines.find((x) => x.isBundle && x.bundleId === (item.bundleId || item.id));
+      return b && b.payable ? b.unitPrice : null;
+    }
     const key = `${item.id}|${item.selectedSize || ""}|${item.selectedColor || ""}|${item.gradeName || item.selectedGrade?.name || ""}`;
-    const l = quote.lines.find((x) => `${x.productId}|${x.size || ""}|${x.color || ""}|${x.gradeName || ""}` === key);
+    const l = quote.lines.find((x) => !x.isBundle && `${x.productId}|${x.size || ""}|${x.color || ""}|${x.gradeName || ""}` === key);
     return l && l.payable ? l.unitPrice : null;
   };
+
+  // Which lines need the size confirmation. The SERVER decides (quote returns
+  // requiresSizeVerification / requiresSize per component); this only mirrors it
+  // so the customer sees the notice and checkbox before paying.
+  const sizeLines = useMemo(() => {
+    const out = [];
+    for (const item of payableItems) {
+      if (item.isBundle) {
+        const q = quote.lines.find((x) => x.isBundle && x.bundleId === (item.bundleId || item.id));
+        for (const c of item.bundleComponents || []) {
+          const qc = q?.components?.find((x) => x.productId === c.productId);
+          const needs = qc ? qc.requiresSize : c.requiresSize;
+          if (needs) out.push({ label: `${c.name} (in ${item.name})`, size: c.size, standard: qc?.sizingStandard || c.sizingStandard });
+        }
+      } else {
+        const q = quote.lines.find((x) => !x.isBundle && x.productId === item.id && (x.size || "") === (item.selectedSize || "") && (x.gradeName || "") === (item.gradeName || item.selectedGrade?.name || ""));
+        if (q?.requiresSizeVerification) out.push({ label: item.name, size: item.selectedSize, standard: q.sizingStandard });
+      }
+    }
+    return out;
+  }, [payableItems, quote.lines]);
+  const needsSizeConfirmation = sizeLines.length > 0;
+  const missingSize = sizeLines.some((l) => !l.size);
   const confirmedTotal = quote.state === "ready" ? quote.total : displayTotal;
 
   // Accept the new prices: update the cart's stored prices to the server's
@@ -167,19 +201,21 @@ export default function Checkout() {
       setError("The price of one or more items has changed. Please review your order before continuing to payment.");
       return;
     }
+    if (missingSize) {
+      setError("Please go back and choose a size for every garment in your order before paying.");
+      return;
+    }
+    if (needsSizeConfirmation && !sizeConfirmed) {
+      setError("Please tick the size verification box to confirm your size before paying.");
+      return;
+    }
     setUiState(UI_STATE.PAYING);
     try {
       // The server computes the real amount from the products table and
       // starts a hosted-checkout payment at Payza. The cart only sends line
       // identity (product, grade, size, color, quantity) — never a price.
       const { ok, payload } = await postJson("/api/payments/payza/create-order", {
-        items: payableItems.map((item) => ({
-          productId: item.id,
-          quantity: item.quantity,
-          size: item.selectedSize || null,
-          color: item.selectedColor || null,
-          gradeName: item.gradeName || item.selectedGrade?.name || null,
-        })),
+        items: toServerLines(pricing.payableLines, { sizeVerified: needsSizeConfirmation && sizeConfirmed }),
         customer: { email, phone, firstName, lastName },
       });
       if (!ok) {
@@ -434,12 +470,21 @@ export default function Checkout() {
                     <div className="w-16 h-20 bg-muted flex-shrink-0" />
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium line-clamp-1">{item.name}</p>
+                    <p className="text-sm font-medium line-clamp-2">{item.name}</p>
                     <p className="text-[10px] tracking-wide-2 uppercase text-muted-foreground mt-0.5">
-                      {item.category} {item.gradeName ? `• ${item.gradeName}` : ""}
+                      {item.isBundle ? (<span className="inline-flex items-center gap-1"><Package className="w-3 h-3" /> Bundle</span>) : item.category} {item.gradeName ? `• ${item.gradeName}` : ""}
                       {item.selectedSize ? ` • Size ${item.selectedSize}` : ""}
                       {item.selectedColor ? ` • ${item.selectedColor}` : ""}
                     </p>
+                    {item.isBundle && (item.bundleComponents || []).length > 0 && (
+                      <ul className="mt-1.5 space-y-0.5 text-[11px] text-muted-foreground" data-testid="bundle-contents">
+                        {item.bundleComponents.map((c) => (
+                          <li key={c.productId}>
+                            {c.quantity} × {c.name}{c.size ? ` (Size ${c.size})` : ""}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                     <p className="text-sm mt-1" data-testid="summary-line">
                       {isConfirmedNumeric(item.price) ? (
                         <>
@@ -565,6 +610,37 @@ export default function Checkout() {
               </div>
             </div>
 
+            {needsSizeConfirmation && (
+              <div className="mb-5" data-testid="size-verification">
+                <SizeNotice />
+                <ul className="mt-3 border border-border divide-y divide-border text-xs">
+                  {sizeLines.map((l) => (
+                    <li key={l.label} className="px-3 py-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                      <span className="font-medium">{l.label}</span>
+                      <span className={l.size ? "text-foreground" : "text-destructive"}>
+                        {l.size ? `Size ${l.size}` : "No size selected"} · {l.standard || "Global / International"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <label className="mt-3 flex items-start gap-3 cursor-pointer border border-[#C5A059]/50 p-3">
+                  <input
+                    type="checkbox"
+                    checked={sizeConfirmed}
+                    onChange={(e) => setSizeConfirmed(e.target.checked)}
+                    className="mt-0.5 h-5 w-5 shrink-0 accent-[#C5A059]"
+                    data-testid="size-confirm-checkbox"
+                  />
+                  <span className="text-sm leading-snug">{SIZE_CHECKBOX_LABEL}</span>
+                </label>
+                {missingSize && (
+                  <p className="mt-2 text-xs text-destructive flex items-center gap-1.5">
+                    <Ruler className="w-3.5 h-3.5" /> Choose a size for every garment before you can pay.
+                  </p>
+                )}
+              </div>
+            )}
+
             {error && (
               <div className="mb-4 border border-border bg-muted/30 p-3 flex gap-3 items-start text-sm">
                 <AlertCircle className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
@@ -576,7 +652,7 @@ export default function Checkout() {
               <>
                 <button
                   onClick={handlePayWithPayza}
-                  disabled={payableItems.length === 0 || quote.state !== "ready" || priceChanged || unavailableLines.length > 0}
+                  disabled={payableItems.length === 0 || quote.state !== "ready" || priceChanged || unavailableLines.length > 0 || missingSize || (needsSizeConfirmation && !sizeConfirmed)}
                   className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 text-[12px] tracking-wide-2 uppercase bg-[#C5A059] text-black hover:bg-[#b8914f] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <CreditCard className="w-4 h-4" /> Pay {formatMoney(confirmedTotal)} with Payza

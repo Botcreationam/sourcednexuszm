@@ -95,9 +95,21 @@ export function paidOrderWhatsAppMessage({
 } = {}) {
   const money = (n) =>
     `K${Number(n || 0).toLocaleString("en-ZM", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-  const lines = items.map((i, idx) => {
-    const opts = [i.grade, i.size && `Size ${i.size}`, i.color].filter(Boolean).join(", ");
-    return `${idx + 1}. ${i.name}${opts ? ` (${opts})` : ""}\n   ${i.quantity} x ${money(i.unitPrice ?? i.unit_price)} = ${money(i.lineTotal ?? i.line_total)}`;
+  const sizeDetail = (x) => {
+    const std = x.sizingStandard ?? x.sizing_standard;
+    const ver = x.sizeVerified ?? x.size_verified;
+    return x.size ? [`Size: ${x.size}`, std && `Sizing standard: ${std}`, ver && "Size verification: Confirmed"].filter(Boolean) : [];
+  };
+  const lines = items.flatMap((i, idx) => {
+    const unit = i.unitPrice ?? i.unit_price;
+    const lineTotal = i.lineTotal ?? i.line_total;
+    const isBundle = i.isBundle ?? i.is_bundle;
+    const opts = isBundle ? "" : [i.grade, i.color].filter(Boolean).join(", ");
+    const head = `${idx + 1}. ${isBundle ? "[BUNDLE] " : ""}${i.name}${opts ? ` (${opts})` : ""}\n   ${i.quantity} x ${money(unit)} = ${money(lineTotal)}`;
+    const extra = isBundle
+      ? ["   Includes:", ...(i.components || []).map((c) => `   - ${c.quantity} x ${c.name}${sizeDetail(c).length ? ` (${sizeDetail(c).join(" | ")})` : ""}`)]
+      : sizeDetail(i).map((l) => `   ${l}`);
+    return [[head, ...extra].join("\n")];
   });
   return [
     "*PAID ORDER | SOURCED NEXUS*",

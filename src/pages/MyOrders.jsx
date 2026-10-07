@@ -1,3 +1,4 @@
+import OrderLineDetails from "@/components/site/OrderLineDetails";
 import { useCallback, useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
@@ -129,11 +130,12 @@ function ReceiptModal({ orderNumber, onClose }) {
                   <tr key={idx} className="border-t border-border/60 align-top">
                     <td className="py-2.5 pr-2">
                       {i.name}
-                      {(i.grade || i.size || i.color) && (
+                      {(i.grade || i.color) && !i.is_bundle && (
                         <span className="block text-[11px] text-muted-foreground">
-                          {[i.grade, i.size && `Size ${i.size}`, i.color].filter(Boolean).join(" • ")}
+                          {[i.grade, i.color].filter(Boolean).join(" • ")}
                         </span>
                       )}
+                      <OrderLineDetails item={i} />
                     </td>
                     <td className="py-2.5 text-right">{i.quantity}</td>
                     <td className="py-2.5 text-right whitespace-nowrap">{formatMoney(i.unit_price)}</td>
@@ -252,9 +254,10 @@ export default function MyOrders() {
                 {o.items.map((i, idx) => (
                   <li key={idx} className="flex justify-between gap-3">
                     <span className="min-w-0">
-                      {i.name}
+                      {i.isBundle ? <span className="text-[#C5A059] text-[10px] uppercase tracking-wide mr-1.5">Bundle</span> : null}{i.name}
                       {i.grade ? <span className="text-muted-foreground"> • {i.grade}</span> : null}
                       <span className="text-muted-foreground"> × {i.quantity}</span>
+                      <OrderLineDetails item={i} />
                     </span>
                     <span className="whitespace-nowrap text-muted-foreground">{formatMoney(i.lineTotal)}</span>
                   </li>

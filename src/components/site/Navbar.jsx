@@ -16,6 +16,7 @@ const LINKS = [
   { label: "Home", to: "/" },
   { label: "Shop", to: "/catalog" },
   { label: "New Arrivals", to: "/catalog?sort=newest" },
+  { label: "Bundles", to: "/bundles" },
   { label: "Categories", to: "/categories" },
   { label: "How It Works", to: "/how-it-works" },
   { label: "Pre-Order", to: "/pre-order" },
@@ -27,6 +28,7 @@ const LINKS = [
 // so the navigation never appears duplicated on mobile screens.
 const MOBILE_MENU_LINKS = [
   { label: "New Arrivals", to: "/catalog?sort=newest" },
+  { label: "Bundles", to: "/bundles" },
   { label: "Categories", to: "/categories" },
   { label: "How It Works", to: "/how-it-works" },
   { label: "Pre-Order", to: "/pre-order" },

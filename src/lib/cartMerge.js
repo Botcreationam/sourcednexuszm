@@ -25,6 +25,18 @@ export function getCartItemKey(productId, size = null, color = null, gradeName =
   return `${productId || "item"}_${size || "std"}_${color || "std"}_${gradeName || "std"}`;
 }
 
+/**
+ * Identity of a BUNDLE line: the bundle plus the exact size the customer chose
+ * for each garment inside it. Same bundle with different sizes = different line.
+ */
+export function getBundleItemKey(bundleId, selections = []) {
+  const sig = (selections || [])
+    .map((s) => `${s.productId}:${s.size || "std"}`)
+    .sort()
+    .join(",");
+  return `bundle_${bundleId}_${sig || "std"}`;
+}
+
 /** Compute an item's key from a stored item that may or may not have itemKey. */
 export function resolveItemKey(item) {
   if (!item) return null;
@@ -54,6 +66,9 @@ export function normalizeCartItem(item) {
     gradeOriginalPrice: item.gradeOriginalPrice ?? grade?.original_price ?? null,
     gradeDiscount: item.gradeDiscount ?? grade?.discount_percentage ?? null,
     gradeStockStatus: item.gradeStockStatus ?? grade?.stock_status ?? null,
+    isBundle: Boolean(item.isBundle),
+    bundleId: item.bundleId || null,
+    bundleComponents: Array.isArray(item.bundleComponents) ? item.bundleComponents : [],
     quantity: Math.max(1, Number(item.quantity) || 1),
     selectedSize: item.selectedSize || null,
     selectedColor: item.selectedColor || null,

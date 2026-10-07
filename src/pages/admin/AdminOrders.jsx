@@ -1,3 +1,4 @@
+import OrderLineDetails from "@/components/site/OrderLineDetails";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -41,6 +42,7 @@ export default function AdminOrders() {
   const [orderItems, setOrderItems] = useState([]);
   const [payments, setPayments] = useState([]);
   const [receipts, setReceipts] = useState([]);
+  const [components, setComponents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
 
@@ -48,11 +50,13 @@ export default function AdminOrders() {
     if (!supabase || !user) return;
     setLoading(true);
     try {
-      const [ordersRes, itemsRes, paymentsRes, receiptsRes] = await Promise.all([
+      const [ordersRes, itemsRes, paymentsRes, receiptsRes, compsRes] = await Promise.all([
         supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(200),
         supabase.from("order_items").select("*").order("created_at", { ascending: false }).limit(1000),
         supabase.from("payments").select("*").order("created_at", { ascending: false }).limit(500),
         supabase.from("order_receipts").select("order_id,receipt_number,email_status,email_attempts,email_last_error,email_sent_at").limit(500),
+        // Bundle contents. Optional: errors before the bundles migration is applied.
+        supabase.from("order_item_components").select("*").order("created_at", { ascending: true }).limit(3000),
       ]);
       if (ordersRes.error) throw ordersRes.error;
       setOrders(ordersRes.data || []);
@@ -60,6 +64,7 @@ export default function AdminOrders() {
       setPayments(paymentsRes.data || []);
       // Receipts are optional: before the migration runs this simply returns an error
       setReceipts(receiptsRes.error ? [] : receiptsRes.data || []);
+      setComponents(compsRes.error ? [] : compsRes.data || []);
     } catch (err) {
       console.error("Failed to load orders:", err.message);
     } finally {
@@ -70,6 +75,15 @@ export default function AdminOrders() {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  // Frozen bundle contents, grouped by the order line they belong to
+  const componentsByItem = {};
+  for (const c of components) {
+    (componentsByItem[c.order_item_id] ||= []).push({
+      name: c.product_name, quantity: c.quantity, size: c.selected_size,
+      sizing_standard: c.sizing_standard, size_verified: c.size_verified,
+    });
+  }
 
   const itemsByOrder = {};
   for (const item of orderItems) {
@@ -183,9 +197,14 @@ export default function AdminOrders() {
                       </p>
                       {items.map((item, i) => (
                         <p key={i} className="text-xs leading-relaxed">
-                          <span className="font-medium">{item.product_name}</span>
+                          {item.is_bundle ? <span className="text-[#C5A059] text-[10px] uppercase tracking-wide mr-1.5">Bundle</span> : null}
+                          <span className="font-medium">{item.is_bundle ? (item.bundle_name || item.product_name) : item.product_name}</span>
                           {item.grade_name ? <span className="text-[#C5A059]"> • {item.grade_name}</span> : null}
                           <span className="text-muted-foreground"> × {item.quantity} @ {formatKwachaPrice(item.unit_price)} = {formatKwachaPrice(item.line_total)}</span>
+                          <OrderLineDetails item={{
+                            size: item.selected_size, sizing_standard: item.sizing_standard, size_verified: item.size_verified,
+                            is_bundle: item.is_bundle, components: componentsByItem[item.id] || [],
+                          }} />
                         </p>
                       ))}
                     </td>

@@ -18,6 +18,9 @@ const Home = lazy(() => import('./pages/Home'));
 const Checkout = lazy(() => import('./pages/Checkout'));
 const Catalog = lazy(() => import('./pages/Catalog'));
 const ProductDetail = lazy(() => import('./pages/ProductDetail'));
+const Bundles = lazy(() => import('./pages/Bundles'));
+const BundleDetail = lazy(() => import('./pages/BundleDetail'));
+const AdminBundles = lazy(() => import('./pages/admin/AdminBundles'));
 const Categories = lazy(() => import('./pages/Categories'));
 const PreOrder = lazy(() => import('./pages/PreOrder'));
 const HowItWorks = lazy(() => import('./pages/HowItWorks'));
@@ -72,6 +75,8 @@ const AuthenticatedApp = () => {
         <Route path="/" element={<Home />} />
         <Route path="/catalog" element={<Catalog />} />
         <Route path="/product/:id" element={<ProductDetail />} />
+        <Route path="/bundles" element={<Bundles />} />
+        <Route path="/bundles/:id" element={<BundleDetail />} />
         <Route path="/categories" element={<Categories />} />
         <Route path="/how-it-works" element={<HowItWorks />} />
         <Route path="/pre-order" element={<PreOrder />} />
@@ -92,6 +97,7 @@ const AuthenticatedApp = () => {
         <Route path="inbox" element={<AdminInbox />} />
         <Route path="inquiries" element={<AdminInquiries />} />
         <Route path="products" element={<AdminProducts />} />
+        <Route path="bundles" element={<AdminBundles />} />
         <Route path="categories" element={<AdminCategories />} />
         <Route path="preorders" element={<AdminPreorders />} />
         <Route path="orders" element={<AdminOrders />} />

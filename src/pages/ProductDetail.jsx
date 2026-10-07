@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Truck, ChevronLeft, X, ZoomIn, Heart, ShoppingBag, Check, Plus, Minus, MessageCircle, Send, AlertTriangle, RefreshCw } from "lucide-react";
+import { Ruler, Truck, ChevronLeft, X, ZoomIn, Heart, ShoppingBag, Check, Plus, Minus, MessageCircle, Send, AlertTriangle, RefreshCw } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { buildWhatsAppUrl, buildCartInquiryWhatsAppMessage, WHATSAPP_DISPLAY } from "@/lib/whatsapp";
@@ -14,6 +14,9 @@ import BrandedLoader from "@/components/BrandedLoader";
 import ProductChat from "@/components/site/ProductChat";
 import ProductInteractions from "@/components/site/ProductInteractions";
 import HorizontalProductSection from "@/components/site/HorizontalProductSection";
+import SizeGuideModal from "@/components/site/SizeGuideModal";
+import SizeNotice from "@/components/site/SizeNotice";
+import { requiresSizeVerification, sizingStandardFor } from "@/lib/sizePolicy";
 import { productPath, parseProductParam } from "@/lib/productUrl";
 
 const STATUS_LABELS = { available: "Available", preorder: "Pre-Order", soldout: "Sold Out" };
@@ -37,6 +40,7 @@ export default function ProductDetail() {
   const [selectedColor, setSelectedColor] = useState(null);
   const [selectedGrade, setSelectedGrade] = useState(null);
   const [quantity, setQuantity] = useState(1);
+  const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
   const [specifications, setSpecifications] = useState("");
 
   const {
@@ -76,7 +80,9 @@ export default function ProductDetail() {
             if (metricsData) setMetrics(metricsData);
             
             setActiveImg(0);
-            if (data.sizes?.length) setSelectedSize(data.sizes[0]);
+            // Garments that need size verification start with NO size picked: the
+            // customer must choose, we never choose for them.
+            if (data.sizes?.length && !requiresSizeVerification(data)) setSelectedSize(data.sizes[0]);
             if (data.colors?.length) setSelectedColor(data.colors[0]);
             if (data.grades?.length) setSelectedGrade(data.grades[0]);
             setLoading(false);
@@ -88,7 +94,7 @@ export default function ProductDetail() {
         if (bProduct) {
           recordProductView(bProduct);
           recordCategoryView(bProduct.category);
-          if (bProduct.sizes?.length) setSelectedSize(bProduct.sizes[0]);
+          if (bProduct.sizes?.length && !requiresSizeVerification(bProduct)) setSelectedSize(bProduct.sizes[0]);
           if (bProduct.colors?.length) setSelectedColor(bProduct.colors[0]);
           if (bProduct.grades?.length) setSelectedGrade(bProduct.grades[0]);
         }
@@ -191,6 +197,7 @@ export default function ProductDetail() {
   const status = hasGrades && selectedGrade ? selectedGrade.stock_status.toLowerCase().replace(/ /g, "_") : (product.status || "available");
   
   const exactSelectedImage = images[activeImg] || (images.length > 0 ? images[0] : null);
+  const needsSizeCheck = requiresSizeVerification(product);
   const selectedVariant = { size: selectedSize || null, color: selectedColor || null, gradeName: selectedGrade?.name || null };
   const inCart = isInCart(product.id, selectedVariant);
   const inWishlist = isInWishlist(product.id);
@@ -217,6 +224,14 @@ export default function ProductDetail() {
   };
 
   const handleAddToCart = () => {
+    if (needsSizeCheck && !selectedSize) {
+      toast({
+        title: "Select your size first",
+        description: "Please choose a size. Use the size guide if you are unsure.",
+        variant: "destructive",
+      });
+      return;
+    }
     addToCart(product, {
       quantity,
       selectedSize,
@@ -407,9 +422,26 @@ export default function ProductDetail() {
               {/* Sizes Selection */}
               {product.sizes?.length > 0 && (
                 <div className="mt-7">
-                  <p className="text-[11px] tracking-wide-2 uppercase text-muted-foreground mb-2.5">
-                    Select Size: <span className="text-foreground font-semibold">{selectedSize || "Select"}</span>
-                  </p>
+                  <div className="flex items-center justify-between gap-3 mb-2.5">
+                    <p className="text-[11px] tracking-wide-2 uppercase text-muted-foreground">
+                      Select Size: <span className="text-foreground font-semibold">{selectedSize || "Select"}</span>
+                    </p>
+                    {(needsSizeCheck || product.size_guide_type) && (
+                      <button
+                        type="button"
+                        onClick={() => setSizeGuideOpen(true)}
+                        className="inline-flex items-center gap-1.5 text-[11px] tracking-wide-2 uppercase text-[#C5A059] hover:underline"
+                        data-testid="size-guide-button"
+                      >
+                        <Ruler className="w-3.5 h-3.5" /> Size Guide
+                      </button>
+                    )}
+                  </div>
+                  {needsSizeCheck && (
+                    <p className="mb-2.5 text-xs text-muted-foreground" data-testid="sizing-standard">
+                      Sizing system: <span className="text-foreground">{sizingStandardFor(product)}</span>
+                    </p>
+                  )}
                   <div className="flex flex-wrap gap-2">
                     {product.sizes.map((s) => (
                       <button
@@ -426,6 +458,7 @@ export default function ProductDetail() {
                       </button>
                     ))}
                   </div>
+                  {needsSizeCheck && <SizeNotice compact className="mt-4" />}
                 </div>
               )}
 
@@ -567,6 +600,7 @@ export default function ProductDetail() {
       
       {/* Product Chat */}
       <ProductChat product={product} open={isChatOpen} onClose={() => setIsChatOpen(false)} />
+      {sizeGuideOpen && <SizeGuideModal product={product} onClose={() => setSizeGuideOpen(false)} />}
     </div>
   );
 }

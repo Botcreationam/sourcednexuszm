@@ -33,6 +33,7 @@ function filterSql(params, values, skip = ['select', 'order', 'limit']) {
   for (const [key, raw] of params) {
     if (skip.includes(key)) continue;
     const m = String(raw).match(/^(eq|in|neq|is|gt|gte|lt|lte)\.(.*)$/s);
+    if (!m && key === 'or') continue; // not used by the pages under test
     if (!m) throw new Error(`unsupported filter ${key}=${raw}`);
     const [, op, val] = m;
     if (op === 'eq') { values.push(val); where.push(`${ident(key)}::text = $${values.length}`); }
@@ -57,10 +58,24 @@ export async function startPgShim({ port, pg }) {
 
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://x');
-    const send = (code, data) => {
-      res.writeHead(code, { 'Content-Type': 'application/json' });
-      res.end(data === undefined ? '' : JSON.stringify(data));
+    const cors = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': '*',
+      'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
+      'Access-Control-Expose-Headers': 'Content-Range',
     };
+    const wantsObject = String(req.headers.accept || '').includes('vnd.pgrst.object');
+    const send = (code, data) => {
+      res.writeHead(code, { 'Content-Type': 'application/json', ...cors });
+      if (data === undefined) return res.end('');
+      // supabase-js .single()/.maybeSingle(): one object instead of an array
+      if (wantsObject && Array.isArray(data) && code === 200) {
+        if (data.length === 0) { res.writeHead; return res.end(JSON.stringify(null)); }
+        return res.end(JSON.stringify(data[0]));
+      }
+      res.end(JSON.stringify(data));
+    };
+    if (req.method === 'OPTIONS') { res.writeHead(204, cors); return res.end(); }
     let body = '';
     req.on('data', (c) => (body += c));
     req.on('end', async () => {
@@ -72,6 +87,8 @@ export async function startPgShim({ port, pg }) {
           const r = await client.query('select id,email from auth.users where id::text = $1', [m[1]]);
           return r.rows[0] ? send(200, r.rows[0]) : send(401, {});
         }
+        if (url.pathname.startsWith('/rest/v1/rpc/')) return send(200, null);
+        if (url.pathname.startsWith('/auth/v1/')) return send(200, {});
         if (!url.pathname.startsWith('/rest/v1/')) return send(404, {});
         const table = url.pathname.replace('/rest/v1/', '');
         const payload = body ? JSON.parse(body) : null;

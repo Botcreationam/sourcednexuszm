@@ -2,8 +2,10 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { useAuth } from "./AuthContext";
 import { getUserCartAndWishlist, saveUserCartAndWishlist } from "./supabase";
 import { toggleProductLike, isProductLiked } from "./recommendations";
+import { requiresSizeVerification } from "./sizePolicy";
 import {
   getCartItemKey,
+  getBundleItemKey,
   mergeCartItems,
   mergeWishlists,
   normalizeCart,
@@ -209,7 +211,14 @@ export function CartProvider({ children }) {
 
   // --- Cart Operations ---
   const addToCart = useCallback((product, options = {}) => {
-    if (!product || !product.id) return;
+    if (!product || !product.id) return { added: false };
+
+    // A garment that needs size verification is never added without a size the
+    // customer chose themselves. We do not pick one for them. Callers get a
+    // signal so they can send the customer to the product page to choose.
+    if (requiresSizeVerification(product) && !options.selectedSize) {
+      return { added: false, needsSize: true };
+    }
 
     const {
       quantity = 1,
@@ -281,6 +290,58 @@ export function CartProvider({ children }) {
     if (openDrawer) {
       setIsCartOpen(true);
     }
+    return { added: true };
+  }, []);
+
+  // Add a BUNDLE. The price shown is for display only: the server prices the
+  // bundle from the database and ignores anything the browser sends.
+  // `selections` = [{ productId, size, color }] the customer chose per garment.
+  const addBundleToCart = useCallback((bundle, options = {}) => {
+    if (!bundle || !bundle.id) return;
+    const { quantity = 1, selections = [], openDrawer = true } = options;
+    const itemKey = getBundleItemKey(bundle.id, selections);
+    const components = (bundle.components || []).map((c) => ({
+      productId: c.productId,
+      name: c.name,
+      quantity: c.quantity,
+      unitPrice: c.unitPrice ?? null,
+      image: c.image || null,
+      category: c.category || null,
+      sizes: c.sizes || [],
+      requiresSize: Boolean(c.requiresSize),
+      sizingStandard: c.sizingStandard || null,
+      size: selections.find((s) => s.productId === c.productId)?.size || null,
+    }));
+    setCart((prev) => {
+      const index = prev.findIndex((i) => i.itemKey === itemKey);
+      if (index > -1) {
+        const next = [...prev];
+        next[index] = { ...next[index], quantity: next[index].quantity + Math.max(1, Number(quantity) || 1) };
+        return next;
+      }
+      return [
+        ...prev,
+        {
+          itemKey,
+          id: bundle.id,
+          isBundle: true,
+          bundleId: bundle.id,
+          bundleComponents: components,
+          name: bundle.name,
+          category: "Bundle",
+          price: bundle.bundlePrice,
+          image: bundle.image || null,
+          quantity: Math.max(1, Number(quantity) || 1),
+          selectedSize: null,
+          selectedColor: null,
+          selectedGrade: null,
+          gradeName: null,
+          specifications: "",
+          addedAt: new Date().toISOString(),
+        },
+      ];
+    });
+    if (openDrawer) setIsCartOpen(true);
   }, []);
 
   // Remove ONE cart line by its exact line key (product + size + color + grade).
@@ -441,6 +502,7 @@ export function CartProvider({ children }) {
     cart,
     cartCount,
     addToCart,
+    addBundleToCart,
     removeFromCart,
     removeProductVariant,
     updateCartQuantity,
