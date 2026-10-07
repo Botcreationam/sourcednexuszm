@@ -87,7 +87,16 @@ export async function startPgShim({ port, pg }) {
           const r = await client.query('select id,email from auth.users where id::text = $1', [m[1]]);
           return r.rows[0] ? send(200, r.rows[0]) : send(401, {});
         }
-        if (url.pathname.startsWith('/rest/v1/rpc/')) return send(200, null);
+        if (url.pathname.startsWith('/rest/v1/rpc/')) {
+          // Run the REAL claim functions from the migrations (allow-listed).
+          const fn = url.pathname.replace('/rest/v1/rpc/', '');
+          if (fn === 'claim_receipt_emails' || fn === 'claim_payment_admin_notifications') {
+            const lim = Number((body ? JSON.parse(body).p_limit : 0) || 20);
+            const r = await client.query(`select * from public.${fn}($1)`, [lim]);
+            return send(200, r.rows);
+          }
+          return send(200, null);
+        }
         if (url.pathname.startsWith('/auth/v1/')) return send(200, {});
         if (!url.pathname.startsWith('/rest/v1/')) return send(404, {});
         const table = url.pathname.replace('/rest/v1/', '');

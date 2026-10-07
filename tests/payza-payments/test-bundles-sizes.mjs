@@ -285,7 +285,9 @@ async function main() {
   console.log('\n[11] Idempotency: duplicate webhook/verify must not duplicate anything');
   await pay(ref2);
   check('still one receipt', (await q(`select count(*)::int n from order_receipts`))[0].n === 1);
-  check('still one email', mail.sent.length === 1, mail.sent.length);
+  const adminAddrs = ['frankmwalu04@gmail.com', 'sourcednexus@gmail.com'];
+  check('still one customer email', mail.sent.filter((m) => !adminAddrs.includes([].concat(m.to)[0])).length === 1, mail.sent.length);
+  check('duplicate delivery added no admin email beyond one per admin', mail.sent.filter((m) => adminAddrs.includes([].concat(m.to)[0])).length <= 2, mail.sent.length);
 
   console.log('\n[12] Snapshots are permanent: editing/deleting the bundle & products later');
   await q(`update bundles set name='RENAMED', bundle_price=1 where id=$1`, [GENT.id]);

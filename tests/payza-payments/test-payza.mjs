@@ -68,6 +68,7 @@ const db = {
   order_items: [],
   payments: [],
   order_receipts: [],
+  payment_admin_notifications: [],
   user_profiles: [{ id: 'u-1', cart: [] }],
 };
 let rowSeq = 0;

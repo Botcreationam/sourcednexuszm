@@ -16,7 +16,7 @@ const db = {
     category: 'Suits', price: 'K 1,500', status: 'available', images: [],
     grades: [{ name: 'First Grade', price: '1500', original_price: '2000', discount_percentage: 25 }],
   }],
-  orders: [], order_items: [], payments: [], order_receipts: [],
+  orders: [], order_items: [], payments: [], order_receipts: [], payment_admin_notifications: [],
   user_profiles: [{ id: 'u-customer', cart: [] }],
 };
 
@@ -147,7 +147,7 @@ async function main() {
   const { spawn } = await import('node:child_process');
   const server = spawn('node', [path.resolve(__dirname, '../../server.js')], { stdio: ['ignore', 'pipe', 'pipe'] });
   let serverErr = '';
-  server.stderr.on('data', (d) => { serverErr += d.toString(); });
+  server.stderr.on('data', (d) => { serverErr += d.toString(); if (process.env.E2E_DEBUG) process.stderr.write('[server] ' + d); });
   await new Promise((r) => setTimeout(r, 1200));
 
   const lines = [{ productId: '11111111-1111-1111-1111-111111111111', quantity: 2, gradeName: 'First Grade' }];
@@ -195,7 +195,7 @@ async function main() {
   console.log('\n[E6] Retry with correct amount — new attempt, same order');
   const created2 = await api('/api/payments/payza/create-order', {
     token: 'customer-token',
-    body: { items: lines, customer: { email: 'customer@example.com' } },
+    body: { items: lines, customer: { email: 'customer@example.com', phone: '0971111111' } },
   });
   check('new reference issued', created2.status === 201 && created2.data.reference !== ref);
   check('same order reused (no duplicate)', created2.data.orderNumber === created.data.orderNumber);
@@ -221,7 +221,7 @@ async function main() {
   // make a new pending attempt to receive the webhook
   const created3 = await api('/api/payments/payza/create-order', {
     token: 'customer-token',
-    body: { items: lines, customer: { email: 'customer@example.com' } },
+    body: { items: lines, customer: { email: 'customer@example.com', phone: '0971111111' } },
   });
   const ref3 = created3.data.reference;
   payza.status[ref3] = 'success'; payza.amount[ref3] = 3000;
@@ -246,7 +246,7 @@ async function main() {
   // payment.cancelled event on a fresh attempt -> cancelled status
   const created4 = await api('/api/payments/payza/create-order', {
     token: 'customer-token',
-    body: { items: lines, customer: { email: 'customer@example.com' } },
+    body: { items: lines, customer: { email: 'customer@example.com', phone: '0971111111' } },
   });
   const ref4 = created4.data.reference;
   payza.status[ref4] = 'cancelled';
@@ -258,7 +258,7 @@ async function main() {
   console.log('\n[E9] Cancel flow (customer backed out of hosted checkout)');
   const created5 = await api('/api/payments/payza/create-order', {
     token: 'customer-token',
-    body: { items: lines, customer: { email: 'customer@example.com' } },
+    body: { items: lines, customer: { email: 'customer@example.com', phone: '0971111111' } },
   });
   const ref5 = created5.data.reference;
   const cancelForeign = await api('/api/payments/payza/cancel', { token: 'other-user-token', body: { reference: ref5 } });
