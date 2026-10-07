@@ -43,7 +43,7 @@ export default async function handler(req, res) {
     if (applied.error) {
       return res.status(applied.code || 409).json({ success: false, error: applied.error });
     }
-    const { order, receipt } = await confirmedOrderSummary(own.data[0].order_id);
+    const { order, receipt, items } = await confirmedOrderSummary(own.data[0].order_id);
     return res.status(200).json({
       success: true,
       paymentStatus: applied.status,
@@ -53,6 +53,7 @@ export default async function handler(req, res) {
       amountPaid: applied.status === 'paid' && order ? Number(order.subtotal) : null,
       currency: order ? order.currency : 'ZMW',
       receipt,
+      items: applied.status === 'paid' ? items : [],
     });
   } catch (err) {
     console.error('[payza] verify error:', err.message);

@@ -3,6 +3,7 @@ import { Navigate, useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import { formatKwachaPrice } from "@/lib/utils";
+import { buildWhatsAppUrl, paidOrderWhatsAppMessage } from "@/lib/whatsapp";
 import { priceCart, priceLine, formatMoney, toServerLines, authedFetch, fetchServerQuote } from "@/lib/cartPricing";
 import {
   ShoppingBag,
@@ -18,6 +19,7 @@ import {
   Mail,
   ReceiptText,
   RefreshCw,
+  MessageCircle,
 } from "lucide-react";
 
 // Online payments via Payza (Airtel Money, MTN, Zamtel). The backend keys are
@@ -224,6 +226,7 @@ export default function Checkout() {
             amount: payload.amountPaid,
             currency: payload.currency || "ZMW",
             receipt: payload.receipt || null,
+            items: Array.isArray(payload.items) ? payload.items : [],
           }));
           setUiState(UI_STATE.SUCCESS);
         } else if (payload.paymentStatus === "confirmation_pending") {
@@ -332,6 +335,34 @@ export default function Checkout() {
               </dd>
             </div>
           </dl>
+
+          {/* Only rendered in the SUCCESS state, which requires the server to
+              have confirmed the payment as paid. The message is built from the
+              confirmed order, not the live cart. */}
+          {orderInfo?.items?.length > 0 && (
+            <div className="mb-6 border border-[#C5A059]/40 bg-[#C5A059]/5 p-4 text-left" data-testid="whatsapp-order-details">
+              <p className="text-sm font-medium mb-1">Track your product on WhatsApp</p>
+              <p className="text-xs text-muted-foreground mb-3">
+                Send your paid order details to Sourced Nexus so we can track and update you on your product.
+              </p>
+              <a
+                href={buildWhatsAppUrl(
+                  paidOrderWhatsAppMessage({
+                    orderNumber: orderInfo.orderNumber,
+                    reference: orderInfo.reference,
+                    total: orderInfo.amount,
+                    items: orderInfo.items,
+                    customerName: user?.full_name || user?.name || "",
+                  })
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-full items-center justify-center gap-2 px-6 py-3 text-[11px] tracking-wide-2 uppercase bg-[#25D366] text-black hover:bg-[#1fb957] transition-colors"
+              >
+                <MessageCircle className="w-4 h-4" /> Send Product Details on WhatsApp
+              </a>
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link to="/account/orders" className="inline-flex items-center gap-2 px-6 py-3 text-[11px] tracking-wide-2 uppercase bg-[#C5A059] text-black hover:bg-[#b8914f] transition-colors">

@@ -3,6 +3,7 @@ import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { authedFetch, formatMoney } from "@/lib/cartPricing";
 import { useToast } from "@/components/ui/use-toast";
+import { buildWhatsAppUrl, paidOrderWhatsAppMessage } from "@/lib/whatsapp";
 import {
   Loader2,
   ReceiptText,
@@ -14,6 +15,7 @@ import {
   RefreshCw,
   X,
   ShoppingBag,
+  MessageCircle,
 } from "lucide-react";
 
 // "My Orders": the signed-in customer's own orders and receipts.
@@ -146,7 +148,25 @@ function ReceiptModal({ orderNumber, onClose }) {
               <span className="font-display text-3xl">{formatMoney(r.total)}</span>
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+            {/* Receipts exist only for confirmed, paid orders. */}
+            <a
+              href={buildWhatsAppUrl(
+                paidOrderWhatsAppMessage({
+                  orderNumber: r.orderNumber,
+                  reference: r.paymentReference,
+                  total: r.total,
+                  items: r.items,
+                  customerName: r.customerName,
+                })
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 px-4 py-3 text-[11px] tracking-wide-2 uppercase bg-[#25D366] text-black hover:bg-[#1fb957] transition-colors"
+            >
+              <MessageCircle className="w-4 h-4" /> Send Product Details on WhatsApp
+            </a>
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <Mail className="w-3.5 h-3.5" />
                 {r.emailStatus === "sent" ? `Emailed to ${r.customerEmail}` : "Email not delivered yet"}

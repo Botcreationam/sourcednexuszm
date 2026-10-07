@@ -706,7 +706,7 @@ const server = http.createServer((req, res) => {
           json(applied.code || 409, { success: false, error: applied.error });
           return;
         }
-        const { order, receipt } = await confirmedOrderSummary(own.data[0].order_id);
+        const { order, receipt, items } = await confirmedOrderSummary(own.data[0].order_id);
         json(200, {
           success: true,
           paymentStatus: applied.status,
@@ -716,6 +716,7 @@ const server = http.createServer((req, res) => {
           amountPaid: applied.status === 'paid' && order ? Number(order.subtotal) : null,
           currency: order ? order.currency : 'ZMW',
           receipt,
+          items: applied.status === 'paid' ? items : [],
         });
         return;
       } catch (err) {

@@ -81,3 +81,34 @@ export function preorderNotificationMessage(data) {
   ].filter(Boolean);
   return lines.join("\n");
 }
+
+/**
+ * Message a customer sends AFTER a confirmed payment so the team can track the
+ * product. Built only from the server-confirmed order (never the live cart).
+ */
+export function paidOrderWhatsAppMessage({
+  orderNumber = "",
+  reference = "",
+  total = null,
+  items = [],
+  customerName = "",
+} = {}) {
+  const money = (n) =>
+    `K${Number(n || 0).toLocaleString("en-ZM", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  const lines = items.map((i, idx) => {
+    const opts = [i.grade, i.size && `Size ${i.size}`, i.color].filter(Boolean).join(", ");
+    return `${idx + 1}. ${i.name}${opts ? ` (${opts})` : ""}\n   ${i.quantity} x ${money(i.unitPrice ?? i.unit_price)} = ${money(i.lineTotal ?? i.line_total)}`;
+  });
+  return [
+    "*PAID ORDER | SOURCED NEXUS*",
+    "Hello Sourced Nexus, I have completed my payment. Please track my order.",
+    customerName ? `Name: ${customerName}` : null,
+    `Order: #${orderNumber || "N/A"}`,
+    reference ? `Payment reference: ${reference}` : null,
+    "",
+    "*Products:*",
+    ...lines,
+    "",
+    total != null ? `*Total paid: ${money(total)}*` : null,
+  ].filter((l) => l !== null).join("\n");
+}
