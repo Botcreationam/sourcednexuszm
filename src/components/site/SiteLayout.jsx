@@ -6,6 +6,7 @@ import Navbar from "./Navbar";
 import Footer from "./Footer";
 import WhatsAppFloat from "./WhatsAppFloat";
 import OnboardingModal from "./OnboardingModal";
+import ScrollProgress from "./ScrollProgress";
 import CartDrawer from "./CartDrawer";
 import WishlistDrawer from "./WishlistDrawer";
 import InquiryModal from "./InquiryModal";
@@ -30,11 +31,12 @@ export default function SiteLayout() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <ScrollProgress />
       <Navbar />
       {/* Bottom navigation clearance on mobile/tablet is handled by the footer
           padding (most pages) and by page-level padding where the footer is
           hidden, so no double padding appears between content and footer. */}
-      <main className="flex-1">
+      <main key={location.pathname} className="flex-1 sn-route">
         <Outlet />
       </main>
       {!hideFooter && <Footer noBottomNavSpace={isLandingPage} />}

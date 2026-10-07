@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Camera, Truck, MessageSquare, ShieldCheck, LayoutGrid, Package } from "lucide-react";
 import { buildWhatsAppUrl, photoSourcingMessage, WHATSAPP_DISPLAY } from "@/lib/whatsapp";
 import ScrollReveal from "@/components/site/ScrollReveal";
+import AnimatedHeadline from "@/components/site/AnimatedHeadline";
+import StepConnector from "@/components/site/StepConnector";
 import SectionHeading from "@/components/site/SectionHeading";
 import PhotoChoiceModal from "@/components/site/PhotoChoiceModal";
 
@@ -52,11 +54,9 @@ export default function Home() {
             <p className="text-[11px] md:text-xs tracking-luxe uppercase text-foreground/70">SOURCED NEXUS</p>
             <p className="text-[10px] md:text-[11px] tracking-luxe uppercase text-foreground/50 mt-2">LUSAKA • ZAMBIA</p>
           </ScrollReveal>
-          <ScrollReveal delay={0.25}>
-            <h1 className="font-display text-5xl md:text-7xl lg:text-8xl leading-[0.95] mt-6 max-w-4xl mx-auto">
-              Your Style & Tech.<br />Sourced For You.
-            </h1>
-          </ScrollReveal>
+          <h1 className="font-display text-5xl md:text-7xl lg:text-8xl leading-[0.95] mt-6 max-w-4xl mx-auto">
+            <AnimatedHeadline lines={["Your Style & Tech.", "Sourced For You."]} underline="Sourced For You." />
+          </h1>
           <ScrollReveal delay={0.4}>
             <p className="mt-6 text-sm md:text-base font-light text-foreground/70 max-w-lg mx-auto">
               Sourced Nexus is your personal sourcing and shopping platform. Browse curated fashion, luxury
@@ -65,12 +65,12 @@ export default function Home() {
           </ScrollReveal>
           <ScrollReveal delay={0.55}>
             <div className="mt-9 flex flex-col sm:flex-row gap-3 justify-center">
-              <Link to="/catalog" className="group inline-flex items-center justify-center gap-2 bg-foreground text-background px-8 py-4 text-[11px] tracking-wide-2 uppercase hover:bg-foreground/85 transition-colors">
+              <Link to="/catalog" className="group sn-shine sn-press inline-flex items-center justify-center gap-2 bg-foreground text-background px-8 py-4 text-[11px] tracking-wide-2 uppercase hover:bg-foreground/85 transition-colors">
                 Start Shopping <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
               <button
                 onClick={() => setPhotoModalOpen(true)}
-                className="inline-flex items-center justify-center gap-2 border border-foreground/40 px-8 py-4 text-[11px] tracking-wide-2 uppercase hover:bg-foreground hover:text-background transition-colors"
+                className="sn-press inline-flex items-center justify-center gap-2 border border-foreground/40 px-8 py-4 text-[11px] tracking-wide-2 uppercase hover:bg-foreground hover:text-background transition-colors"
               >
                 <Camera className="w-4 h-4" /> Send Us a Photo
               </button>
@@ -144,14 +144,15 @@ export default function Home() {
       <section id="how-it-works" className="py-20 md:py-28">
         <div className="mx-auto max-w-7xl px-5 md:px-8">
           <SectionHeading eyebrow="How It Works" title="Send the picture. We'll handle the rest." />
-          <div className="grid md:grid-cols-3 gap-10 md:gap-16 mt-16">
+          <div className="relative grid md:grid-cols-3 gap-10 md:gap-16 mt-16">
+            <StepConnector />
             {[
               { icon: Camera, step: "01", title: "Send a Photo", text: "Snap or screenshot the outfit you love and send it to us on WhatsApp, or pick something straight from the catalogue." },
               { icon: MessageSquare, step: "02", title: "We Source It", text: "We find, curate and arrange your item from our trusted network, confirming quality and price with you." },
               { icon: Truck, step: "03", title: "Delivered To You", text: "Receive your piece in Lusaka within 7–14 working days, with updates every step of the way." },
             ].map((s, i) => (
-              <ScrollReveal key={s.step} delay={i * 0.15} className="text-center">
-                <div className="mx-auto w-14 h-14 border border-border flex items-center justify-center mb-6">
+              <ScrollReveal key={s.step} delay={i * 0.15} className="text-center sn-tile-host">
+                <div className="sn-tile relative z-10 mx-auto w-14 h-14 border border-border bg-background flex items-center justify-center mb-6">
                   <s.icon className="w-5 h-5" strokeWidth={1} />
                 </div>
                 <p className="text-[10px] tracking-luxe text-muted-foreground mb-2">{s.step}</p>

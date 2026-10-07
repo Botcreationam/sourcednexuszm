@@ -170,6 +170,104 @@ html {
 .animate-slow-zoom { animation: slow-zoom 12s ease-out forwards; }
 .animate-marquee { animation: marquee 32s linear infinite; }
 
+/* ============================================================
+   BRAND MOTION (CSS only, no animation library)
+   Everything here is disabled by the reduced-motion rule below.
+   ============================================================ */
+@keyframes sn-word-rise {
+  from { opacity: 0; transform: translateY(0.65em) rotate(1.5deg); filter: blur(6px); }
+  to   { opacity: 1; transform: none; filter: blur(0); }
+}
+@keyframes sn-line-draw {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+@keyframes sn-shine {
+  from { transform: translateX(-120%) skewX(-20deg); }
+  to   { transform: translateX(220%) skewX(-20deg); }
+}
+@keyframes sn-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+@keyframes sn-pop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  60%  { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); }
+}
+@keyframes sn-route-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Headline: each word rises in, staggered by --i */
+.sn-word {
+  display: inline-block;
+  opacity: 0;
+  animation: sn-word-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: calc(var(--i, 0) * 90ms + 150ms);
+}
+
+/* Gold-ish underline that draws itself under a key phrase */
+.sn-underline { position: relative; display: inline-block; }
+.sn-underline::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: -0.08em; height: 2px;
+  background: currentColor; opacity: 0.55;
+  transform-origin: left center; transform: scaleX(0);
+  animation: sn-line-draw 1s cubic-bezier(0.65, 0, 0.35, 1) 1.1s forwards;
+}
+
+/* Scroll progress bar (width driven by a CSS variable set from JS) */
+.sn-progress {
+  position: fixed; top: 0; left: 0; right: 0; height: 2px; z-index: 60;
+  transform-origin: left center;
+  transform: scaleX(var(--sn-progress, 0));
+  background: hsl(var(--foreground));
+  opacity: 0.85; pointer-events: none;
+  transition: transform 0.08s linear;
+}
+
+/* Primary buttons: soft light sweep on hover, gentle press */
+.sn-shine { position: relative; overflow: hidden; isolation: isolate; }
+.sn-shine::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 40%;
+  background: linear-gradient(90deg, transparent, hsl(var(--background) / 0.28), transparent);
+  transform: translateX(-120%) skewX(-20deg); z-index: -1; pointer-events: none;
+}
+@media (hover: hover) {
+  .sn-shine:hover::before { animation: sn-shine 0.9s ease; }
+}
+.sn-press { transition: transform 0.18s ease; }
+.sn-press:active { transform: scale(0.97); }
+
+/* Product cards: lift + deeper shadow on hover (devices with a real hover) */
+@media (hover: hover) {
+  .sn-card { transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1); }
+  .sn-card:hover { transform: translateY(-6px); }
+  .sn-card .sn-card-media { transition: box-shadow 0.45s ease; }
+  .sn-card:hover .sn-card-media { box-shadow: 0 22px 40px -22px hsl(var(--foreground) / 0.45); }
+}
+
+/* Icon tiles on the landing page */
+.sn-tile { transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.3s ease, color 0.3s ease; }
+@media (hover: hover) {
+  .sn-tile-host:hover .sn-tile { transform: translateY(-4px) rotate(-3deg); background: hsl(var(--foreground)); color: hsl(var(--background)); }
+}
+
+.sn-float { animation: sn-float 4.5s ease-in-out infinite; }
+.sn-pop   { animation: sn-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Page content fades in on every route change */
+.sn-route { animation: sn-route-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* How-it-works connector line that draws as it scrolls into view */
+.sn-connector {
+  transform-origin: left center; transform: scaleX(0);
+  transition: transform 1.4s cubic-bezier(0.65, 0, 0.35, 1) 0.3s;
+}
+.sn-connector.is-in { transform: scaleX(1); }
+
 /* Tracking helpers */
 .tracking-luxe { letter-spacing: 0.35em; }
 .tracking-wide-2 { letter-spacing: 0.2em; }
@@ -182,4 +280,10 @@ html {
     animation-iteration-count: 1 !important;
   }
   html { scroll-behavior: auto; }
+  .sn-word { opacity: 1 !important; animation: none !important; }
+  .sn-underline::after { transform: scaleX(1) !important; animation: none !important; }
+  .sn-connector { transform: scaleX(1) !important; transition: none !important; }
+  .sn-card, .sn-tile, .sn-press { transition: none !important; transform: none !important; }
+  .sn-float, .sn-pop, .sn-route { animation: none !important; }
+  .sn-progress { display: none; }
 }

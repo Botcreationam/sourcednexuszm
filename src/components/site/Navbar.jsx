@@ -57,7 +57,8 @@ function NavTab({ icon: Icon, label, active = false, onClick, badge = 0, badgeCl
         <Icon className={`w-5 h-5 ${active ? "text-[#C5A059]" : ""}`} strokeWidth={active ? 2 : 1.75} />
         {badge > 0 && (
           <span
-            className={`absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[9px] font-bold ${badgeClass}`}
+            key={badge}
+            className={`sn-pop absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[9px] font-bold ${badgeClass}`}
           >
             {badge > 9 ? "9+" : badge}
           </span>
@@ -417,7 +418,7 @@ export default function Navbar() {
                 >
                   <ShoppingBag className="w-4 h-4" />
                   {cartCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-[#C5A059] text-black text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-in zoom-in">
+                    <span key={cartCount} className="sn-pop absolute -top-1 -right-1 bg-[#C5A059] text-black text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                       {cartCount}
                     </span>
                   )}

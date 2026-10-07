@@ -84,10 +84,10 @@ export default function ProductCard({ product }) {
     .sort((a, b) => a - b)[0] || product.price;
 
   return (
-    <div className="group snap-start relative h-full flex flex-col justify-between">
+    <div className="group sn-card snap-start relative h-full flex flex-col justify-between">
       <div>
         <Link to={productPath(product)} onClick={handleCardClick} className="block">
-          <div className="relative aspect-[3/4] overflow-hidden bg-zinc-900">
+          <div className="sn-card-media relative aspect-[3/4] overflow-hidden bg-zinc-900">
             {/* Skeleton while loading */}
             {img && !imageLoaded && !imageFailed && (
               <div className="absolute inset-0 bg-zinc-800/60 animate-pulse flex items-center justify-center">
@@ -155,7 +155,7 @@ export default function ProductCard({ product }) {
         <button
           type="button"
           onClick={handleCartToggle}
-          className={`flex-1 text-center text-[10px] tracking-wide-2 uppercase py-2.5 transition-all flex items-center justify-center gap-1.5 ${
+          className={`sn-press flex-1 text-center text-[10px] tracking-wide-2 uppercase py-2.5 transition-all flex items-center justify-center gap-1.5 ${
             inCart
               ? "bg-[#C5A059] text-black font-semibold hover:bg-[#b08e4d]"
               : "border border-foreground/30 hover:bg-foreground hover:text-background text-foreground"
