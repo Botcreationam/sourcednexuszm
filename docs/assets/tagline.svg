@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 56" width="1200" height="56"><style>
+.t{font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:24px;fill:#8a6a2a;letter-spacing:1px}
+@keyframes show{0%,2%{opacity:0;transform:translateY(8px)}6%,22%{opacity:1;transform:translateY(0)}26%,100%{opacity:0;transform:translateY(-8px)}}
+.a{opacity:0;animation:show 16s infinite}.b{animation-delay:4s}.c{animation-delay:8s}.e{animation-delay:12s}
+@media(prefers-reduced-motion:reduce){.a{animation:none;opacity:1}.b,.c,.e{display:none}}</style>
+<g text-anchor="middle"><text class="t a" x="600" y="34">Shop curated fashion and gadgets</text><text class="t a b" x="600" y="34">Pay securely online with Payza in ZMW</text><text class="t a c" x="600" y="34">Verified sizes, so it fits first time</text><text class="t a e" x="600" y="34">Can't find it? We'll source it for you</text></g></svg>
