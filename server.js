@@ -23,6 +23,10 @@ import { processAnnouncements, sendAnnouncementTest } from './lib/announcements.
 import { handleShopRequest } from './lib/shop-api.mjs';
 import { resolveProductRequest } from './lib/product-meta.mjs';
 import { confirmedOrderSummary } from './lib/order-receipts.mjs';
+import { safeImageUrl, isValidEmailAddress, createRateLimiter } from './lib/security-utils.mjs';
+
+// Best-effort limit: 8 inquiries / 10 min per IP.
+const allowInquiry = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 8 });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -179,9 +183,12 @@ setInterval(() => {
 const BLOCKED_BOT_REGEX = /(sqlmap|nikto|masscan|dirbuster|acunetix|gobuster|wprecon|nmap|zgrab|censys|shodan)/i;
 
 function getClientIp(req) {
+  // The platform proxy appends the real peer address LAST; the first entry is
+  // client-controlled and trivially spoofable (rate-limit bypass).
   const xForwardedFor = req.headers['x-forwarded-for'];
   if (xForwardedFor) {
-    return xForwardedFor.split(',')[0].trim();
+    const parts = String(xForwardedFor).split(',').map((p) => p.trim()).filter(Boolean);
+    if (parts.length) return parts[parts.length - 1].slice(0, 64);
   }
   return req.socket?.remoteAddress || '127.0.0.1';
 }
@@ -227,11 +234,19 @@ const server = http.createServer((req, res) => {
 
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    res.writeHead(204, {
-      'Access-Control-Allow-Origin': '*',
+    // Same-origin app: only our own origins may read cross-origin responses.
+    const origin = req.headers['origin'];
+    const allowedOrigins = new Set(
+      (process.env.CORS_ALLOWED_ORIGINS || 'https://sourcednexus.online,https://www.sourcednexus.online')
+        .split(',').map((o) => o.trim()).filter(Boolean),
+    );
+    const headers = {
       'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    });
+      'Vary': 'Origin',
+    };
+    if (origin && allowedOrigins.has(origin)) headers['Access-Control-Allow-Origin'] = origin;
+    res.writeHead(204, headers);
     res.end();
     return;
   }
@@ -303,6 +318,12 @@ const server = http.createServer((req, res) => {
             return;
           }
 
+          if (!turnstileSecret && process.env.NODE_ENV === 'production') {
+            console.error('[turnstile] TURNSTILE_SECRET missing in production: refusing to bypass.');
+            res.writeHead(503, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: 'Verification is temporarily unavailable.' }));
+            return;
+          }
           if (!turnstileSecret) {
             console.warn('[turnstile] TURNSTILE_SECRET is not configured in .env yet.');
             res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -370,10 +391,21 @@ const server = http.createServer((req, res) => {
       });
       req.on('end', async () => {
         try {
+          if (!allowInquiry(ip)) {
+            res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '600' });
+            res.end(JSON.stringify({ success: false, error: 'Too many requests. Please try again later.' }));
+            return;
+          }
           const payload = JSON.parse(bodyStr || '{}');
           const customerName = typeof payload.customer_name === 'string' ? payload.customer_name.trim() : '';
           const contactNumber = typeof payload.contact_number === 'string' ? payload.contact_number.trim() : '';
-          const email = typeof payload.email === 'string' ? payload.email.trim() : null;
+          const rawEmail = typeof payload.email === 'string' ? payload.email.trim().toLowerCase() : '';
+          if (rawEmail && !isValidEmailAddress(rawEmail)) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: 'Please provide a valid email address.' }));
+            return;
+          }
+          const email = rawEmail || null;
           const inquiryType = ['quote_request', 'preorder', 'product_inquiry'].includes(payload.inquiry_type)
             ? payload.inquiry_type
             : 'quote_request';
@@ -404,7 +436,7 @@ const server = http.createServer((req, res) => {
             name: String(item.name || 'Unnamed Product').slice(0, 150),
             category: item.category ? String(item.category).slice(0, 80) : 'General',
             price: item.price ? String(item.price).slice(0, 50) : 'Price on Request',
-            image: item.image ? String(item.image).slice(0, 1000) : null,
+            image: safeImageUrl(item.image),
             quantity: Math.max(1, Math.min(100, Number(item.quantity) || 1)),
             selectedSize: item.selectedSize ? String(item.selectedSize).slice(0, 30) : null,
             selectedColor: item.selectedColor ? String(item.selectedColor).slice(0, 30) : null,
@@ -417,10 +449,11 @@ const server = http.createServer((req, res) => {
             specifications: item.specifications ? String(item.specifications).slice(0, 300) : '',
           }));
 
+          const authUser = await getAuthUser(req.headers['authorization']);
           const estimatedTotal = Number(payload.estimated_total);
           const record = {
             id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined,
-            user_id: payload.user_id || null,
+            user_id: authUser ? authUser.id : null, // verified token only, never the request body
             inquiry_type: inquiryType,
             customer_name: customerName,
             contact_number: contactNumber,
@@ -456,7 +489,8 @@ const server = http.createServer((req, res) => {
               if (supaRes.ok) {
                 const inserted = await supaRes.json();
                 res.writeHead(201, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ success: true, inquiry: inserted[0] || record }));
+                const row = inserted[0] || record;
+                res.end(JSON.stringify({ success: true, inquiry: { id: row.id, status: row.status, created_at: row.created_at } }));
                 return;
               } else {
                 console.warn('[inquiries] Supabase insert returned status:', supaRes.status);
@@ -468,7 +502,7 @@ const server = http.createServer((req, res) => {
 
           // Return success even if fallback storage is used so user flow is seamless
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: true, inquiry: record }));
+          res.end(JSON.stringify({ success: true, inquiry: { status: record.status } }));
           return;
         } catch (err) {
           res.writeHead(500, { 'Content-Type': 'application/json' });

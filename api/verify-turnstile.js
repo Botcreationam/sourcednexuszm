@@ -1,3 +1,5 @@
+import { trustedClientIp } from '../lib/security-utils.mjs';
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
@@ -18,6 +20,10 @@ export default async function handler(req, res) {
       return res.status(403).json({ success: false, error: 'forbidden: invalid turnstile token format' });
     }
 
+    if (!turnstileSecret && (process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production')) {
+      console.error('[turnstile] TURNSTILE_SECRET missing in production: refusing to bypass.');
+      return res.status(503).json({ success: false, error: 'Verification is temporarily unavailable.' });
+    }
     if (!turnstileSecret) {
       console.warn('[turnstile] TURNSTILE_SECRET is not configured.');
       return res.status(200).json({ 
@@ -26,7 +32,7 @@ export default async function handler(req, res) {
       });
     }
 
-    const clientIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1';
+    const clientIp = trustedClientIp(req);
     
     const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
       method: "POST",
@@ -34,7 +40,7 @@ export default async function handler(req, res) {
       body: new URLSearchParams({
         secret: turnstileSecret,
         response: token,
-        remoteip: clientIp.split(',')[0].trim(),
+        remoteip: clientIp,
       }),
     });
 
@@ -51,8 +57,7 @@ export default async function handler(req, res) {
     ) {
       return res.status(403).json({ 
         success: false, 
-        error: 'forbidden: verification rejected', 
-        details: result['error-codes'] || [] 
+        error: 'forbidden: verification rejected' 
       });
     }
 

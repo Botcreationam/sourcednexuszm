@@ -1,13 +1,28 @@
+import { getAuthUser } from '../lib/payza-shared.mjs';
+import { safeImageUrl, isValidEmailAddress, trustedClientIp, createRateLimiter } from '../lib/security-utils.mjs';
+
+// Best-effort per-instance limit: 8 inquiries / 10 min per IP.
+const allowInquiry = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 8 });
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
   try {
-    const payload = req.body || {};
+    const clientIp = trustedClientIp(req);
+    if (!allowInquiry(clientIp)) {
+      res.setHeader('Retry-After', '600');
+      return res.status(429).json({ success: false, error: 'Too many requests. Please try again later.' });
+    }
+    const payload = req.body && typeof req.body === 'object' ? req.body : {};
     const customerName = typeof payload.customer_name === 'string' ? payload.customer_name.trim() : '';
     const contactNumber = typeof payload.contact_number === 'string' ? payload.contact_number.trim() : '';
-    const email = typeof payload.email === 'string' ? payload.email.trim() : null;
+    const rawEmail = typeof payload.email === 'string' ? payload.email.trim().toLowerCase() : '';
+    if (rawEmail && !isValidEmailAddress(rawEmail)) {
+      return res.status(400).json({ success: false, error: 'Please provide a valid email address.' });
+    }
+    const email = rawEmail || null;
     const inquiryType = ['quote_request', 'preorder', 'product_inquiry'].includes(payload.inquiry_type)
       ? payload.inquiry_type
       : 'quote_request';
@@ -31,7 +46,7 @@ export default async function handler(req, res) {
       name: String(item.name || 'Unnamed Product').slice(0, 150),
       category: item.category ? String(item.category).slice(0, 80) : 'General',
       price: item.price ? String(item.price).slice(0, 50) : 'Price on Request',
-      image: item.image ? String(item.image).slice(0, 1000) : null,
+      image: safeImageUrl(item.image),
       quantity: Math.max(1, Math.min(100, Number(item.quantity) || 1)),
       selectedSize: item.selectedSize ? String(item.selectedSize).slice(0, 30) : null,
       selectedColor: item.selectedColor ? String(item.selectedColor).slice(0, 30) : null,
@@ -44,10 +59,12 @@ export default async function handler(req, res) {
       specifications: item.specifications ? String(item.specifications).slice(0, 300) : '',
     }));
 
-    const clientIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1';
+    // Identity comes ONLY from a verified access token, never from the body.
+    // Anonymous quote requests stay allowed (user_id = null).
+    const authUser = await getAuthUser(req.headers['authorization']);
 
     const record = {
-      user_id: payload.user_id || null,
+      user_id: authUser ? authUser.id : null,
       inquiry_type: inquiryType,
       customer_name: customerName,
       contact_number: contactNumber,
@@ -58,7 +75,7 @@ export default async function handler(req, res) {
       additional_instructions: payload.additional_instructions ? String(payload.additional_instructions).slice(0, 2000) : null,
       status: 'Pending',
       source: payload.source === 'whatsapp' ? 'whatsapp' : 'website',
-      ip_address: clientIp.split(',')[0].trim(),
+      ip_address: clientIp,
       estimated_total: Number.isFinite(Number(payload.estimated_total)) && payload.estimated_total >= 0 ? Math.min(Number(payload.estimated_total), 10_000_000) : 0,
       preferred_contact: ['whatsapp', 'email', 'phone'].includes(payload.preferred_contact) ? payload.preferred_contact : 'whatsapp',
     };
@@ -81,7 +98,8 @@ export default async function handler(req, res) {
 
         if (supaRes.ok) {
           const inserted = await supaRes.json();
-          return res.status(201).json({ success: true, inquiry: inserted[0] || record });
+          const row = inserted[0] || record;
+          return res.status(201).json({ success: true, inquiry: { id: row.id, status: row.status, created_at: row.created_at } });
         } else {
           console.warn('[inquiries] Supabase insert returned status:', supaRes.status);
         }
@@ -90,9 +108,9 @@ export default async function handler(req, res) {
       }
     }
 
-    return res.status(200).json({ success: true, inquiry: record });
+    return res.status(200).json({ success: true, inquiry: { status: record.status } });
   } catch (err) {
-    console.error(err);
+    console.error('[inquiries] error:', err?.message);
     return res.status(500).json({ success: false, error: 'Internal error processing inquiry.' });
   }
 }

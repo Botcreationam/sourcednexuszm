@@ -293,6 +293,19 @@ export async function createSupabasePreorder(formData, user = null) {
   return data;
 }
 
+/** Bearer header for our own /api endpoints so the server can verify who is calling. */
+async function authHeaders() {
+  const headers = { 'Content-Type': 'application/json' };
+  try {
+    if (supabase) {
+      const { data } = await supabase.auth.getSession();
+      const token = data?.session?.access_token;
+      if (token) headers.Authorization = `Bearer ${token}`;
+    }
+  } catch { /* anonymous request */ }
+  return headers;
+}
+
 /**
  * Submit a customer quote request / product inquiry to Supabase
  */
@@ -301,7 +314,7 @@ export async function submitCustomerInquiry(inquiryData, user = null) {
     // Submit via backend API endpoint if supabase is not direct
     const response = await fetch('/api/inquiries', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authHeaders(),
       body: JSON.stringify({ ...inquiryData, user_id: user?.id || null }),
     });
     if (!response.ok) {
@@ -337,7 +350,7 @@ export async function submitCustomerInquiry(inquiryData, user = null) {
     try {
       const resp = await fetch('/api/inquiries', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify(payload),
       });
       if (resp.ok) return await resp.json();
