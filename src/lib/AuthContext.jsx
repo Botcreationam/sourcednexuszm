@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import { safeReturnTo } from '@/lib/safeReturn';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
@@ -115,7 +116,7 @@ export const AuthProvider = ({ children }) => {
                 if (isAdm) {
                   window.location.href = '/secure/nexuspanel-trust';
                 } else {
-                  window.location.href = pendingReturn;
+                  window.location.href = safeReturnTo(pendingReturn);
                 }
               }
             } catch {}
@@ -271,7 +272,7 @@ export const AuthProvider = ({ children }) => {
     setAuthError(null);
     if (isSupabaseConfigured && supabase) {
       try {
-        sessionStorage.setItem('sn_oauth_return_to', returnTo || '/');
+        sessionStorage.setItem('sn_oauth_return_to', safeReturnTo(returnTo));
       } catch {}
 
       const { data, error } = await supabase.auth.signInWithOAuth({

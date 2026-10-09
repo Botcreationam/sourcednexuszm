@@ -1,3 +1,4 @@
+import { safeReturnTo } from "@/lib/safeReturn";
 import React, { useState, useRef } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
@@ -13,7 +14,7 @@ export default function Login() {
   const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const returnTo = params.get("returnTo") || "/";
+  const returnTo = safeReturnTo(params.get("returnTo"));
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

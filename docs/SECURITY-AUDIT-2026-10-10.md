@@ -11,7 +11,8 @@ This report does NOT certify the site as secure. See "Not verified".
 | # | Sev | Finding | Evidence | Status |
 |---|-----|---------|----------|--------|
 | 1 | High | `/api/inquiries` trusted `user_id` from the request body, so anyone could file inquiries under another customer's account (shows in that customer's "my inquiries"). No auth, no rate limit, no email validation. | api/inquiries.js `user_id: payload.user_id`; same logic duplicated in server.js. Live E2E reproduced then verified fixed. | FIXED (code) |
-| 2 | High | 33 vulnerable npm packages (20 high, 12 moderate, 1 low). Runtime-relevant: react-router/@remix-run/router open redirect (-> XSS), quill XSS via react-quill, lodash code-injection/prototype pollution, dompurify XSS, moment path traversal. Most others are build-time (vite, rollup, postcss, tailwind chain). | `npm audit` | NOT FIXED (needs dependency upgrades + UI regression testing) |
+| 2 | High | 33 vulnerable npm packages (20 high, 12 moderate, 1 low), incl. lodash, dompurify, moment, vite, rollup, ws, quill. | `npm audit` | MOSTLY FIXED: `npm audit fix` (lockfile only, no major bumps) plus removal of the unused `react-quill`. 33 -> 10 remaining, all build-time tooling (tailwind/postcss/braces chain) or the react-router advisory (see 15). Build and all 316+ checks pass. |
+| 15 | Medium | Open redirect in login: `returnTo` from the URL was passed to `navigate()` and `window.location.href` (also reachable via the Google OAuth flow through sessionStorage), so `/login?returnTo=//evil.com` or a `javascript:` value could phish customers after sign-in. | Login.jsx, Register.jsx, AuthContext.jsx | FIXED: same-origin path allowlist (`src/lib/safeReturn.js`), applied on both write and read; 24 attack variants tested. Also neutralizes the exposed react-router open-redirect advisory for this app. |
 | 3 | Medium | No Content-Security-Policy on the live Vercel deployment (only the Render server.js sets one). | `curl -I https://sourcednexus.online/` | MITIGATED: CSP added as Report-Only (not enforcing yet) |
 | 4 | Medium | Wildcard CORS (`*`) on server.js preflight. | server.js | FIXED |
 | 5 | Medium | Rate limiter keyed on the first X-Forwarded-For entry (client-controlled), trivially bypassed. Same for IP stored on inquiries and sent to Turnstile. | server.js getClientIp, api/*.js | FIXED |
@@ -57,7 +58,7 @@ This report does NOT certify the site as secure. See "Not verified".
 ## Recommended follow-up (priority order)
 
 1. Review and apply the migration on a staging branch, then production.
-2. Update dependencies (finding 2), retest checkout/admin/rich-text.
+2. Remaining 10 npm advisories need breaking upgrades (tailwindcss 4, react-router 7). They are build-time or neutralized (finding 15); schedule as a separate, visually-tested upgrade.
 3. Turn on Supabase: MFA for the two admin accounts, leaked-password protection, min password length 10+, PITR backups, restrict redirect URLs.
 4. Enforce the CSP after a Report-Only soak.
 5. Add Vercel Firewall rate-limit rules for /api/inquiries, /api/payments/*, and auth routes.
