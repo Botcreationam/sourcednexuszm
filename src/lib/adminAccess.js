@@ -3,6 +3,7 @@ export const ADMIN_EMAIL = "sourcednexus@gmail.com";
 export const ADMIN_EMAILS = [
   "sourcednexus@gmail.com",
   "frankmwalu04@gmail.com",
+  "joshuankuba04@gmail.com",
 ];
 
 export function isAuthorizedAdmin(email) {
