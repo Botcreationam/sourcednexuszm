@@ -45,7 +45,7 @@ This report does NOT certify the site as secure. See "Not verified".
 ## Remaining risks and not verified
 
 - Dependencies (finding 2) are still vulnerable. Run `npm audit fix`, then upgrade react-router-dom and review react-quill; retest the UI.
-- CSP is Report-Only. Enforce after confirming no violations in the browser console across login, checkout, admin, and the Turnstile widget.
+- CSP is now ENFORCED (branch security/csp-enforce-and-deps). Tested in headless Chrome across 7 pages with zero violations, plus a negative control. Original note: confirm no violations across login, checkout, admin, and the Turnstile widget.
 - The new SQL migration was NOT applied or executed against any database (no DB access here). It was checked by reading the schema only. Test on a Supabase branch/staging first.
 - Not tested: admin MFA (Supabase MFA is available but not enforced; admin is gated by email/role only), password policy (enforced by Supabase Auth settings, not visible in the repo), brute-force limits on Supabase auth endpoints, Supabase dashboard config (backups/PITR, SMTP, redirect URL allow-list, leaked-password protection), Vercel env var hygiene, Cloudflare/DNS, the Base44 backend at base44.app, and the Payza provider side.
 - Rate limiting is in-memory per instance (serverless instances do not share it). It is a speed bump, not a guarantee; use Vercel WAF/Firewall rate rules or Upstash for real limits.
@@ -60,7 +60,7 @@ This report does NOT certify the site as secure. See "Not verified".
 1. Review and apply the migration on a staging branch, then production.
 2. Remaining 10 npm advisories need breaking upgrades (tailwindcss 4, react-router 7). They are build-time or neutralized (finding 15); schedule as a separate, visually-tested upgrade.
 3. Turn on Supabase: MFA for the two admin accounts, leaked-password protection, min password length 10+, PITR backups, restrict redirect URLs.
-4. Enforce the CSP after a Report-Only soak.
+4. CSP enforcement: done on branch; verify login/captcha/checkout on a Vercel preview before merging. If the Base44 build plugin changes its injected inline script, the hash in vercel.json must be updated.
 5. Add Vercel Firewall rate-limit rules for /api/inquiries, /api/payments/*, and auth routes.
 6. Add an `audit_log` table and alerts for failed webhook signatures and admin actions.
 7. Rotate any token that was ever shared in chat (docs/OPERATIONS.md already says so).
