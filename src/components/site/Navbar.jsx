@@ -39,12 +39,19 @@ const MOBILE_MENU_LINKS = [
  * One tab of the mobile bottom navigation.
  * Active state uses the brand gold (#C5A059) with a top indicator bar.
  */
+/** Spoken suffix for a tab badge. The visible label always comes first so
+ *  voice control ("click Cart") and screen readers match the on-screen text. */
+function badgeNoun(label, n) {
+  if (label === "Cart") return n === 1 ? "item" : "items";
+  if (label === "Inbox") return n === 1 ? "unread message" : "unread messages";
+  return "new";
+}
 function NavTab({ icon: Icon, label, active = false, onClick, badge = 0, badgeClass = "" }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={label}
+      aria-label={badge > 0 ? `${label}, ${badge > 9 ? "more than 9" : badge} ${badgeNoun(label, badge)}` : label}
       aria-current={active ? "page" : undefined}
       className={`relative flex flex-col items-center justify-center h-full gap-1 transition-colors ${
         active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
@@ -58,6 +65,7 @@ function NavTab({ icon: Icon, label, active = false, onClick, badge = 0, badgeCl
         {badge > 0 && (
           <span
             key={badge}
+            aria-hidden="true"
             className={`sn-pop absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[9px] font-bold ${badgeClass}`}
           >
             {badge > 9 ? "9+" : badge}

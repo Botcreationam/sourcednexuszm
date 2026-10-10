@@ -16,7 +16,7 @@ export default function Footer({ noBottomNavSpace = false }) {
           </div>
 
           <div>
-            <h4 className="text-[11px] tracking-luxe uppercase text-zinc-50/50 mb-4">Quick Links</h4>
+            <h4 className="text-[11px] tracking-luxe uppercase text-zinc-400 mb-4">Quick Links</h4>
             <ul className="space-y-2.5 text-sm font-light text-zinc-50/80">
               <li><Link to="/" className="hover:text-zinc-50 transition-colors">Home</Link></li>
               <li><Link to="/catalog" className="hover:text-zinc-50 transition-colors">Catalog</Link></li>
@@ -30,7 +30,7 @@ export default function Footer({ noBottomNavSpace = false }) {
           </div>
 
           <div>
-            <h4 className="text-[11px] tracking-luxe uppercase text-zinc-50/50 mb-4">Categories</h4>
+            <h4 className="text-[11px] tracking-luxe uppercase text-zinc-400 mb-4">Categories</h4>
             <ul className="space-y-2.5 text-sm font-light text-zinc-50/80">
               <li><Link to="/catalog?category=Electronics" className="hover:text-zinc-50 transition-colors">Electronics & Tech</Link></li>
               <li><Link to="/catalog?category=Watches" className="hover:text-zinc-50 transition-colors">Luxury Watches</Link></li>
@@ -42,13 +42,13 @@ export default function Footer({ noBottomNavSpace = false }) {
           </div>
 
           <div>
-            <h4 className="text-[11px] tracking-luxe uppercase text-zinc-50/50 mb-4">Contact</h4>
+            <h4 className="text-[11px] tracking-luxe uppercase text-zinc-400 mb-4">Contact</h4>
             <p className="text-sm font-light text-zinc-50/80">WhatsApp / Call (Lusaka)</p>
             <a href={buildWhatsAppUrl(generalInquiryMessage())} target="_blank" rel="noopener noreferrer" className="font-display text-2xl hover:text-zinc-50 transition-colors block mt-1">
               {WHATSAPP_DISPLAY}
             </a>
             <div className="mt-3">
-              <p className="text-[10px] tracking-luxe uppercase text-zinc-50/50">Email Inquiries</p>
+              <p className="text-[10px] tracking-luxe uppercase text-zinc-400">Email Inquiries</p>
               <a href="mailto:sourcednexus@gmail.com" className="text-sm font-light text-zinc-50 hover:underline transition-all block mt-0.5">
                 sourcednexus@gmail.com
               </a>
@@ -64,7 +64,7 @@ export default function Footer({ noBottomNavSpace = false }) {
           </div>
         </div>
 
-        <div className="mt-14 pt-6 border-t border-zinc-50/15 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] tracking-wide-2 uppercase text-zinc-50/40">
+        <div className="mt-14 pt-6 border-t border-zinc-50/15 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] tracking-wide-2 uppercase text-zinc-400">
           <div className="flex flex-wrap items-center gap-4">
             <Link to="/terms" className="hover:text-zinc-50 transition-colors">Terms & Conditions</Link>
             <span>•</span>

@@ -91,7 +91,7 @@ export default function ProductCard({ product }) {
             {/* Skeleton while loading */}
             {img && !imageLoaded && !imageFailed && (
               <div className="absolute inset-0 bg-zinc-800/60 animate-pulse flex items-center justify-center">
-                <span className="text-[9px] tracking-luxe text-zinc-500 uppercase">SN</span>
+                <span className="text-[9px] tracking-luxe text-zinc-400 uppercase">SN</span>
               </div>
             )}
             {img && !imageFailed ? (
