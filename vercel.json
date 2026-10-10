@@ -75,8 +75,8 @@
           "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
         },
         {
-          "key": "Content-Security-Policy-Report-Only",
-          "value": "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co https://*.base44.com https://images.unsplash.com https://*.googleusercontent.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.base44.com https://base44.app https://api.base44.com https://challenges.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com https://*.supabase.co; frame-ancestors 'none'; upgrade-insecure-requests"
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'sha256-BDMpuMcDb5YTofzHKCyxRsGrrtWIgNEfj8D+2GXOr4w=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co https://*.base44.com https://images.unsplash.com https://*.googleusercontent.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.base44.com https://base44.app https://api.base44.com https://challenges.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com https://*.supabase.co; frame-ancestors 'none'; upgrade-insecure-requests"
         },
         {
           "key": "Cross-Origin-Opener-Policy",

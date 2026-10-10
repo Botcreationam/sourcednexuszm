@@ -70,7 +70,8 @@ check('turnstile api: no provider error codes echoed', !/details:\s*result\['err
 
 const vercel = JSON.parse(read('vercel.json'));
 const hk = vercel.headers[0].headers.map((h) => h.key);
-check('vercel: CSP present', hk.includes('Content-Security-Policy-Report-Only') || hk.includes('Content-Security-Policy'));
+check('vercel: CSP is ENFORCING (not report-only)', hk.includes('Content-Security-Policy') && !hk.includes('Content-Security-Policy-Report-Only'));
+check('vercel: CSP allows only the known inline-script hash, no unsafe-inline scripts', (() => { const v = vercel.headers[0].headers.find((h) => h.key === 'Content-Security-Policy').value; const sc = v.split(';').find((x) => x.trim().startsWith('script-src')); return sc.includes("'sha256-") && !sc.includes("'unsafe-inline'"); })());
 check('vercel: HSTS present', hk.includes('Strict-Transport-Security'));
 check('vercel: no unsafe-eval in CSP',
   !vercel.headers[0].headers.find((h) => /Content-Security-Policy/.test(h.key)).value.includes('unsafe-eval'));
