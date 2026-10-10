@@ -64,3 +64,6 @@ This report does NOT certify the site as secure. See "Not verified".
 5. Add Vercel Firewall rate-limit rules for /api/inquiries, /api/payments/*, and auth routes.
 6. Add an `audit_log` table and alerts for failed webhook signatures and admin actions.
 7. Rotate any token that was ever shared in chat (docs/OPERATIONS.md already says so).
+
+
+NOTE (CSP hash): the inline script hash depends on the Base44 app id baked in at build time. Production id 6abc6a8a4b6c9d175aa35566 gives sha256-zbfs/Ay7CnFP0DlobpUDfH8mn5mZZSS0FXW0AHN6uMI=. A build with a different VITE_BASE44_APP_ID produces a different hash.
