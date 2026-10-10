@@ -262,10 +262,10 @@ async function main() {
   check('receipt items frozen (Dress x2 = 800, Lamp x1 = 600)', rc.items.length === 2 && rc.items[0].line_total === 800 && rc.items[1].line_total === 600);
   check('receipt payment reference stored', rc.payment_reference === ref);
   check('order records paid_at / paid_amount / payment id', db.orders[0].paid_amount === 1400 && !!db.orders[0].paid_at && db.orders[0].paid_payment_id === db.payments[0].id);
-  const ADMINS = ['frankmwalu04@gmail.com', 'sourcednexus@gmail.com'];
+  const ADMINS = ['frankmwalu04@gmail.com', 'sourcednexus@gmail.com', 'joshuankuba04@gmail.com'];
   const toCustomer = mail.sent.filter((m) => !ADMINS.includes(m.to[0]));
   check('exactly 1 customer receipt email sent', toCustomer.length === 1);
-  check('exactly 1 notification per admin (2 total)', mail.sent.filter((m) => ADMINS.includes(m.to[0])).length === 2);
+  check('exactly 1 notification per admin (3 total)', mail.sent.filter((m) => ADMINS.includes(m.to[0])).length === 3);
   check('email goes to the order customer', mail.sent[0].to[0] === 'u-1@example.com');
   check('email subject', mail.sent[0].subject === `Payment Receipt \u2014 Sourced Nexus \u2014 Order #${db.orders[0].order_number}`, mail.sent[0].subject);
   check('email shows K1,400 total', mail.sent[0].html.includes('K1,400') && mail.sent[0].text.includes('TOTAL PAID: K1,400'));
@@ -345,8 +345,8 @@ async function main() {
   check('one paid payment', db.payments.filter((p) => p.status === 'paid').length === 1);
   check('ONE receipt', db.order_receipts.length === 1, `got ${db.order_receipts.length}`);
   check('ONE customer email despite 6 deliveries', mail.sent.filter((m) => m.to[0] === 'u-1@example.com').length === 1, `got ${mail.sent.length}`);
-  check('ONE email per admin despite 6 deliveries', ['frankmwalu04@gmail.com', 'sourcednexus@gmail.com'].every((a) => mail.sent.filter((m) => m.to[0] === a).length === 1), `got ${mail.sent.length}`);
-  check('3 emails in total (1 customer + 2 admins)', mail.sent.length === 3, `got ${mail.sent.length}`);
+  check('ONE email per admin despite 6 deliveries', ['frankmwalu04@gmail.com', 'sourcednexus@gmail.com', 'joshuankuba04@gmail.com'].every((a) => mail.sent.filter((m) => m.to[0] === a).length === 1), `got ${mail.sent.length}`);
+  check('4 emails in total (1 customer + 3 admins)', mail.sent.length === 4, `got ${mail.sent.length}`);
   check('exactly one concurrent call won the transition', results.filter((x) => !x.duplicate).length === 1);
   check('receipt total = 2600', db.order_receipts[0].total === 2600);
 

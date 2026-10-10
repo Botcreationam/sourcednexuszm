@@ -2,7 +2,7 @@
 
 ## Administrators
 
-Two accounts have admin access: `sourcednexus@gmail.com` and `frankmwalu04@gmail.com`. Access is enforced twice: the browser hides the panel (`src/lib/adminAccess.js`) and the database checks `public.is_admin()`. To add or remove an administrator, update both places and the `is_admin()` function in a new migration.
+Three accounts have admin access: `sourcednexus@gmail.com`, `joshuankuba04@gmail.com` and `frankmwalu04@gmail.com`. Access is enforced twice: the browser hides the panel (`src/lib/adminAccess.js`) and the database checks `public.is_admin()`. To add or remove an administrator, update both places and the `is_admin()` function in a new migration.
 
 The admin panel lives at `/secure/nexuspanel-trust`. Keep that URL private.
 

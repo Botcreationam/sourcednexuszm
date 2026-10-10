@@ -30,7 +30,7 @@ const PG = {
   user: 'postgres',
   database: process.env.PG_TEST_DB || 'sn_pay_mig',
 };
-const ADMINS = ['frankmwalu04@gmail.com', 'sourcednexus@gmail.com'];
+const ADMINS = ['frankmwalu04@gmail.com', 'sourcednexus@gmail.com', 'joshuankuba04@gmail.com'];
 const SECRET = 'whsec_notify_test';
 
 let passed = 0, failed = 0;
@@ -161,7 +161,7 @@ async function main() {
   check('customer receipt emailed to the order customer', toCustomer().length === 1);
   check('admin #1 (frankmwalu04@gmail.com) notified once', toAdmin(ADMINS[0]).length === 1);
   check('admin #2 (sourcednexus@gmail.com) notified once', toAdmin(ADMINS[1]).length === 1);
-  check('exactly 3 emails (1 customer + 2 admins)', mail.sent.length === 3, `got ${mail.sent.length}`);
+  check('exactly 4 emails (1 customer + 3 admins)', mail.sent.length === 4, `got ${mail.sent.length}`);
   let a = toAdmin(ADMINS[0])[0];
   check('admin subject says New Payment Received', a.subject.startsWith('New Payment Received \u2014 Sourced Nexus'), a.subject);
   check('admin email: customer NAME', a.html.includes('John Banda') && a.text.includes('Name: John Banda'));
