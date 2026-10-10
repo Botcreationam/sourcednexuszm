@@ -270,6 +270,7 @@ export default function ProductInteractions({ productId }) {
               )}
               <input 
                 id="comment-input"
+                aria-label="Ask a question or leave a comment"
                 type="text" 
                 value={commentText}
                 onChange={e => setCommentText(e.target.value)}
@@ -277,7 +278,7 @@ export default function ProductInteractions({ productId }) {
                 className="w-full bg-zinc-900 border border-zinc-800 text-sm px-4 py-3 text-white" 
               />
             </div>
-            <button type="submit" disabled={!commentText.trim()} className="bg-foreground text-background p-3 hover:opacity-90 disabled:opacity-50 mt-auto">
+            <button type="submit" aria-label="Post comment" disabled={!commentText.trim()} className="bg-foreground text-background p-3 hover:opacity-90 disabled:opacity-50 mt-auto">
               <Send className="w-5 h-5" />
             </button>
           </form>

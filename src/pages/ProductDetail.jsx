@@ -332,6 +332,8 @@ export default function ProductDetail() {
                   <button
                     key={i}
                     onClick={() => setActiveImg(i)}
+                    aria-label={`View image ${i + 1} of ${images.length}`}
+                    aria-current={i === activeImg ? "true" : undefined}
                     className={`flex-shrink-0 w-20 aspect-[3/4] overflow-hidden border transition-all ${
                       i === activeImg ? "border-[#C5A059] ring-1 ring-[#C5A059]" : "border-border opacity-70 hover:opacity-100"
                     }`}
