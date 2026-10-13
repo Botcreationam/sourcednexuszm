@@ -42,6 +42,46 @@
       "destination": "https://base44.app/api/apps/:path*"
     },
     {
+      "source": "/catalog",
+      "destination": "/api/static-page?p=catalog"
+    },
+    {
+      "source": "/categories",
+      "destination": "/api/static-page?p=categories"
+    },
+    {
+      "source": "/bundles",
+      "destination": "/api/static-page?p=bundles"
+    },
+    {
+      "source": "/pre-order",
+      "destination": "/api/static-page?p=pre-order"
+    },
+    {
+      "source": "/how-it-works",
+      "destination": "/api/static-page?p=how-it-works"
+    },
+    {
+      "source": "/contact",
+      "destination": "/api/static-page?p=contact"
+    },
+    {
+      "source": "/terms",
+      "destination": "/api/static-page?p=terms"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/api/static-page?p=privacy"
+    },
+    {
+      "source": "/refund-policy",
+      "destination": "/api/static-page?p=refund-policy"
+    },
+    {
+      "source": "/accessibility",
+      "destination": "/api/static-page?p=accessibility"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
